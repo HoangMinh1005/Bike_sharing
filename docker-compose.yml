@@ -104,6 +104,7 @@ services:
       - ./api:/app/api
       - ./src:/app/src
       - ./sql:/app/sql
+      - ./tests:/app/tests
     restart: always
     depends_on:
       postgres:
