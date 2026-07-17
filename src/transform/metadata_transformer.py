@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.common.db import execute_sql, fetch_all, fetch_one
 from src.common.logger import get_logger
@@ -55,7 +55,10 @@ def _get_raw_payload(batch_id: str, feed_name: str) -> Dict[str, Any]:
     return payload
 
 
-def _get_required_data_object(payload: Dict[str, Any], feed_name: str) -> Dict[str, Any]:
+def _get_required_data_object(
+    payload: Dict[str, Any],
+    feed_name: str,
+) -> Dict[str, Any]:
     """
     Return payload['data'] and ensure it is a dictionary.
     """
@@ -63,7 +66,8 @@ def _get_required_data_object(payload: Dict[str, Any], feed_name: str) -> Dict[s
 
     if not isinstance(data, dict):
         raise ValueError(
-            f"Invalid payload for feed '{feed_name}': missing or invalid 'data' object"
+            f"Invalid payload for feed '{feed_name}': "
+            f"missing or invalid 'data' object"
         )
 
     return data
@@ -81,7 +85,8 @@ def _get_required_list(
 
     if not isinstance(value, list):
         raise ValueError(
-            f"Invalid payload for feed '{feed_name}': missing or invalid '{list_key}' list"
+            f"Invalid payload for feed '{feed_name}': "
+            f"missing or invalid '{list_key}' list"
         )
 
     return value
@@ -107,7 +112,8 @@ def transform_system_information(batch_id: str) -> int:
 
     if not system_id:
         raise ValueError(
-            f"system_information payload in batch '{batch_id}' is missing required field 'system_id'"
+            f"system_information payload in batch '{batch_id}' "
+            f"is missing required field 'system_id'"
         )
 
     sql = """
@@ -117,6 +123,7 @@ def transform_system_information(batch_id: str) -> int:
             operator,
             timezone,
             url,
+            source_batch_id,
             loaded_at
         ) VALUES (
             :system_id,
@@ -124,6 +131,7 @@ def transform_system_information(batch_id: str) -> int:
             :operator,
             :timezone,
             :url,
+            :source_batch_id,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (system_id) DO UPDATE SET
@@ -131,6 +139,7 @@ def transform_system_information(batch_id: str) -> int:
             operator = EXCLUDED.operator,
             timezone = EXCLUDED.timezone,
             url = EXCLUDED.url,
+            source_batch_id = EXCLUDED.source_batch_id,
             loaded_at = EXCLUDED.loaded_at
     """
 
@@ -140,12 +149,14 @@ def transform_system_information(batch_id: str) -> int:
         "operator": data.get("operator"),
         "timezone": data.get("timezone"),
         "url": data.get("url"),
+        "source_batch_id": batch_id,
     }
 
     row_count = execute_sql(sql, params)
 
     logger.info(
-        f"Transformed system_information for batch '{batch_id}': processed {row_count} record(s)"
+        f"Transformed system_information for batch '{batch_id}': "
+        f"processed={row_count}"
     )
 
     return row_count
@@ -167,14 +178,17 @@ def transform_regions(batch_id: str) -> int:
         INSERT INTO staging.regions (
             region_id,
             region_name,
+            source_batch_id,
             loaded_at
         ) VALUES (
             :region_id,
             :region_name,
+            :source_batch_id,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (region_id) DO UPDATE SET
             region_name = EXCLUDED.region_name,
+            source_batch_id = EXCLUDED.source_batch_id,
             loaded_at = EXCLUDED.loaded_at
     """
 
@@ -188,20 +202,23 @@ def transform_regions(batch_id: str) -> int:
         if not region_id or not region_name:
             skipped += 1
             logger.warning(
-                f"Skipping invalid region record: missing region_id or name. record={region}"
+                f"Skipping invalid region record: "
+                f"missing region_id or name. record={region}"
             )
             continue
 
         params = {
             "region_id": region_id,
             "region_name": region_name,
+            "source_batch_id": batch_id,
         }
 
         execute_sql(sql, params)
         processed += 1
 
     logger.info(
-        f"Transformed system_regions for batch '{batch_id}': processed={processed}, skipped={skipped}"
+        f"Transformed system_regions for batch '{batch_id}': "
+        f"processed={processed}, skipped={skipped}"
     )
 
     if processed == 0:
@@ -236,6 +253,7 @@ def transform_vehicle_types(batch_id: str) -> int:
             form_factor,
             propulsion_type,
             max_range_meters,
+            source_batch_id,
             loaded_at
         ) VALUES (
             :vehicle_type_id,
@@ -243,6 +261,7 @@ def transform_vehicle_types(batch_id: str) -> int:
             :form_factor,
             :propulsion_type,
             :max_range_meters,
+            :source_batch_id,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (vehicle_type_id) DO UPDATE SET
@@ -250,6 +269,7 @@ def transform_vehicle_types(batch_id: str) -> int:
             form_factor = EXCLUDED.form_factor,
             propulsion_type = EXCLUDED.propulsion_type,
             max_range_meters = EXCLUDED.max_range_meters,
+            source_batch_id = EXCLUDED.source_batch_id,
             loaded_at = EXCLUDED.loaded_at
     """
 
@@ -262,7 +282,8 @@ def transform_vehicle_types(batch_id: str) -> int:
         if not vehicle_type_id:
             skipped += 1
             logger.warning(
-                f"Skipping invalid vehicle_type record: missing vehicle_type_id. record={vehicle_type}"
+                f"Skipping invalid vehicle_type record: "
+                f"missing vehicle_type_id. record={vehicle_type}"
             )
             continue
 
@@ -272,13 +293,15 @@ def transform_vehicle_types(batch_id: str) -> int:
             "form_factor": vehicle_type.get("form_factor"),
             "propulsion_type": vehicle_type.get("propulsion_type"),
             "max_range_meters": vehicle_type.get("max_range_meters"),
+            "source_batch_id": batch_id,
         }
 
         execute_sql(sql, params)
         processed += 1
 
     logger.info(
-        f"Transformed vehicle_types for batch '{batch_id}': processed={processed}, skipped={skipped}"
+        f"Transformed vehicle_types for batch '{batch_id}': "
+        f"processed={processed}, skipped={skipped}"
     )
 
     if processed == 0:
@@ -307,7 +330,9 @@ def transform_stations(batch_id: str) -> int:
 
     Note:
     - staging.stations.region_id has a foreign key to staging.regions(region_id).
-    - If region_id from source does not exist in staging.regions, it will be set to NULL.
+    - If region_id is missing from source, it will be stored as NULL.
+    - If region_id exists in source but does not exist in current batch regions,
+      it will be set to NULL to prevent foreign key errors.
     """
     payload = _get_raw_payload(batch_id, "station_information")
     data = _get_required_data_object(payload, "station_information")
@@ -317,7 +342,9 @@ def transform_stations(batch_id: str) -> int:
         """
         SELECT region_id
         FROM staging.regions
-        """
+        WHERE source_batch_id = :batch_id
+        """,
+        {"batch_id": batch_id},
     )
 
     existing_region_ids = {
@@ -336,6 +363,7 @@ def transform_stations(batch_id: str) -> int:
             region_id,
             capacity,
             is_active,
+            source_batch_id,
             loaded_at
         ) VALUES (
             :station_id,
@@ -346,6 +374,7 @@ def transform_stations(batch_id: str) -> int:
             :region_id,
             :capacity,
             :is_active,
+            :source_batch_id,
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (station_id) DO UPDATE SET
@@ -356,12 +385,14 @@ def transform_stations(batch_id: str) -> int:
             region_id = EXCLUDED.region_id,
             capacity = EXCLUDED.capacity,
             is_active = EXCLUDED.is_active,
+            source_batch_id = EXCLUDED.source_batch_id,
             loaded_at = EXCLUDED.loaded_at
     """
 
     processed = 0
     skipped = 0
-    region_null_count = 0
+    missing_region_count = 0
+    unknown_region_count = 0
 
     for station in stations:
         station_id = station.get("station_id")
@@ -370,18 +401,24 @@ def transform_stations(batch_id: str) -> int:
         if not station_id or not station_name:
             skipped += 1
             logger.warning(
-                f"Skipping invalid station record: missing station_id or name. record={station}"
+                f"Skipping invalid station record: "
+                f"missing station_id or name. record={station}"
             )
             continue
 
         region_id = station.get("region_id")
 
-        if region_id and region_id not in existing_region_ids:
-            logger.warning(
-                f"Station '{station_id}' has unknown region_id='{region_id}'. Setting region_id to NULL."
-            )
+        if not region_id:
+            missing_region_count += 1
             region_id = None
-            region_null_count += 1
+
+        elif region_id not in existing_region_ids:
+            logger.warning(
+                f"Station '{station_id}' has unknown region_id='{region_id}' "
+                f"for batch '{batch_id}'. Setting region_id to NULL."
+            )
+            unknown_region_count += 1
+            region_id = None
 
         params = {
             "station_id": station_id,
@@ -392,6 +429,7 @@ def transform_stations(batch_id: str) -> int:
             "region_id": region_id,
             "capacity": station.get("capacity"),
             "is_active": True,
+            "source_batch_id": batch_id,
         }
 
         execute_sql(sql, params)
@@ -399,7 +437,9 @@ def transform_stations(batch_id: str) -> int:
 
     logger.info(
         f"Transformed station_information for batch '{batch_id}': "
-        f"processed={processed}, skipped={skipped}, region_set_null={region_null_count}"
+        f"processed={processed}, skipped={skipped}, "
+        f"missing_region_id={missing_region_count}, "
+        f"unknown_region_id={unknown_region_count}"
     )
 
     if processed == 0:

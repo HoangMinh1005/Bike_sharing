@@ -7,12 +7,14 @@ CREATE TABLE IF NOT EXISTS staging.system_information (
     operator TEXT,
     timezone TEXT,
     url TEXT,
+    source_batch_id VARCHAR(100),
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS staging.regions (
     region_id VARCHAR(100) PRIMARY KEY,
     region_name TEXT NOT NULL,
+    source_batch_id VARCHAR(100),
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -22,6 +24,7 @@ CREATE TABLE IF NOT EXISTS staging.vehicle_types (
     form_factor TEXT,
     propulsion_type TEXT,
     max_range_meters NUMERIC NULL,
+    source_batch_id VARCHAR(100),
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -34,5 +37,6 @@ CREATE TABLE IF NOT EXISTS staging.stations (
     region_id VARCHAR(100) NULL REFERENCES staging.regions(region_id) ON DELETE SET NULL,
     capacity INTEGER NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    source_batch_id VARCHAR(100),
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

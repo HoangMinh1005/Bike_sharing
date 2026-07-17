@@ -5,6 +5,7 @@ from src.common.db import fetch_one
 from src.common.logger import get_logger
 from src.extract.gbfs_client import GBFSClient
 from src.load.raw_loader import load_gbfs_raw
+from src.quality.metadata_checks import run_metadata_dq_checks
 from src.transform.metadata_transformer import (
     transform_regions,
     transform_stations,
@@ -17,18 +18,22 @@ logger = get_logger(__name__)
 
 def run_metadata_smoke_test():
     """
-    Smoke test for metadata ETL.
+    Metadata ETL smoke test.
 
     Scope:
-    GBFSClient
-    -> load_gbfs_raw
-    -> raw.gbfs_feed_snapshots
-    -> transform metadata
-    -> staging tables
+    1. Generate batch_id
+    2. Fetch 4 metadata feeds
+    3. Load raw snapshots
+    4. Validate raw rows
+    5. Transform raw data into staging tables
+    6. Run batch-aware data quality checks
     """
     settings = get_settings()
 
-    logger.info("Initializing metadata smoke test: Extract -> Raw Load -> Transform")
+    logger.info(
+        "Initializing metadata smoke test: "
+        "Extract -> Raw Load -> Transform -> DQ Checks"
+    )
     logger.info(f"GBFS Base URL: {settings.GBFS_BASE_URL}")
 
     client = GBFSClient(settings.GBFS_BASE_URL)
@@ -71,6 +76,7 @@ def run_metadata_smoke_test():
     if failed_feeds:
         raise RuntimeError(f"Raw ingestion failed. Failed feeds: {failed_feeds}")
 
+    # 2. Validate raw rows
     result = fetch_one(
         """
         SELECT COUNT(*) AS total
@@ -80,12 +86,12 @@ def run_metadata_smoke_test():
         {"batch_id": batch_id},
     )
 
-    total_in_db = result["total"] if result else 0
+    total_in_db = int(result["total"] or 0) if result else 0
 
     if total_loaded_by_function != len(feeds):
         raise RuntimeError(
-            f"Raw ingestion check failed. Expected {len(feeds)} rows loaded by function, "
-            f"but got {total_loaded_by_function}."
+            f"Raw ingestion check failed. Expected {len(feeds)} rows loaded "
+            f"by function, but got {total_loaded_by_function}."
         )
 
     if total_in_db != len(feeds):
@@ -94,10 +100,9 @@ def run_metadata_smoke_test():
             f"but found {total_in_db}."
         )
 
-    logger.info("Raw ingestion completed successfully.")
-    logger.info(f"Total raw rows in database for batch '{batch_id}': {total_in_db}")
+    logger.info("Raw ingestion validated successfully.")
 
-    # 2. Transform raw to staging
+    # 3. Transform raw to staging
     logger.info("==========================================================")
     logger.info("Starting transformation phase: Raw -> Staging")
     logger.info("==========================================================")
@@ -112,33 +117,33 @@ def run_metadata_smoke_test():
         logger.error(f"Transformation phase encountered an error: {e}")
         raise
 
-    # 3. Validate transform result
-    if transformed_sys_info != 1:
-        raise RuntimeError(
-            f"Expected 1 system_information record, got {transformed_sys_info}."
-        )
+    if transformed_sys_info <= 0:
+        raise RuntimeError("No system_information record was transformed.")
 
     if transformed_regions <= 0:
-        raise RuntimeError(
-            f"Expected at least 1 region record, got {transformed_regions}."
-        )
+        raise RuntimeError("No region records were transformed.")
 
     if transformed_vehicle_types <= 0:
-        raise RuntimeError(
-            f"Expected at least 1 vehicle_type record, got {transformed_vehicle_types}."
-        )
+        raise RuntimeError("No vehicle_type records were transformed.")
 
     if transformed_stations <= 0:
-        raise RuntimeError(
-            f"Expected at least 1 station record, got {transformed_stations}."
-        )
+        raise RuntimeError("No station records were transformed.")
 
-    # 4. Print final summary
+    # 4. Run batch-aware DQ checks
     logger.info("==========================================================")
-    logger.info("Metadata Smoke Test Summary: Extract -> Raw Load -> Transform")
+    logger.info("Starting Data Quality Checks Phase")
+    logger.info("==========================================================")
+
+    run_metadata_dq_checks(
+        run_id=batch_id,
+        batch_id=batch_id,
+    )
+
+    # 5. Final summary
+    logger.info("==========================================================")
+    logger.info("Metadata Smoke Test Summary:")
     logger.info(f"  - Batch ID: {batch_id}")
-    logger.info(f"  - Expected raw feeds: {len(feeds)}")
-    logger.info(f"  - Total loaded by function: {total_loaded_by_function}")
+    logger.info(f"  - Total expected raw feeds: {len(feeds)}")
     logger.info(f"  - Total raw rows in database: {total_in_db}")
     logger.info(f"  - Staging system_information loaded: {transformed_sys_info}")
     logger.info(f"  - Staging regions loaded: {transformed_regions}")
