@@ -40,3 +40,60 @@ CREATE TABLE IF NOT EXISTS staging.stations (
     source_batch_id VARCHAR(100),
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS staging.station_status (
+    station_id VARCHAR(100) NOT NULL,
+    num_bikes_available INTEGER NOT NULL,
+    num_docks_available INTEGER NOT NULL,
+    num_bikes_disabled INTEGER DEFAULT 0,
+    num_docks_disabled INTEGER DEFAULT 0,
+    is_installed BOOLEAN DEFAULT TRUE,
+    is_renting BOOLEAN DEFAULT TRUE,
+    is_returning BOOLEAN DEFAULT TRUE,
+    last_reported TIMESTAMP NOT NULL,
+    source_last_updated TIMESTAMP NOT NULL,
+    fetched_at TIMESTAMP NOT NULL,
+    batch_id VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (station_id, batch_id)
+);
+
+CREATE TABLE IF NOT EXISTS staging.station_vehicle_type_status (
+    station_id VARCHAR(100) NOT NULL,
+    vehicle_type_id VARCHAR(100) NOT NULL,
+    count INTEGER NOT NULL,
+    last_reported TIMESTAMP NOT NULL,
+    source_last_updated TIMESTAMP NOT NULL,
+    fetched_at TIMESTAMP NOT NULL,
+    batch_id VARCHAR(100) NOT NULL,
+    loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (station_id, vehicle_type_id, batch_id)
+);
+
+CREATE TABLE IF NOT EXISTS staging.weather_hourly (
+    location_name VARCHAR(100) NOT NULL,
+    latitude NUMERIC NOT NULL,
+    longitude NUMERIC NOT NULL,
+    weather_time TIMESTAMP NOT NULL,
+    temperature NUMERIC,
+    humidity NUMERIC,
+    precipitation NUMERIC,
+    wind_speed NUMERIC,
+    weather_code INTEGER,
+    fetched_at TIMESTAMP NOT NULL,
+    batch_id VARCHAR(100) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (location_name, weather_time, batch_id)
+);
+
+CREATE TABLE IF NOT EXISTS staging.calendar (
+    calendar_date DATE NOT NULL,
+    day_of_week VARCHAR(20) NOT NULL,
+    is_weekend BOOLEAN NOT NULL,
+    is_holiday BOOLEAN NOT NULL,
+    holiday_name VARCHAR(200),
+    batch_id VARCHAR(100) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (calendar_date, batch_id)
+);
