@@ -7,8 +7,16 @@ logger = get_logger(__name__)
 
 def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
     """
-    Run data quality checks for weather and calendar raw and staging layers.
-    Raises ValueError if any CRITICAL check fails.
+    Run data quality checks for weather and calendar raw/staging layers.
+
+    This function checks:
+    - raw.weather_hourly
+    - staging.weather_hourly
+    - raw.calendar
+    - staging.calendar
+
+    Critical checks will raise ValueError and fail the Airflow task.
+    Warning checks will be recorded but will not fail the pipeline.
     """
     logger.info(
         f"Running weather and calendar data quality checks. "
@@ -40,7 +48,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND weather_time IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw record(s) with NULL weather_time.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw weather record(s) "
+                "with NULL weather_time."
+            ),
         },
         {
             "table": "raw.weather_hourly",
@@ -52,7 +63,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND raw_weather IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw record(s) with NULL raw_weather.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw weather record(s) "
+                "with NULL raw_weather."
+            ),
         },
         {
             "table": "raw.weather_hourly",
@@ -64,7 +78,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND fetched_at IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw record(s) with NULL fetched_at.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw weather record(s) "
+                "with NULL fetched_at."
+            ),
         },
         {
             "table": "raw.weather_hourly",
@@ -73,10 +90,38 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 SELECT COUNT(*) AS failed_count
                 FROM raw.weather_hourly
                 WHERE batch_id = :batch_id
-                  AND (location_name IS NULL OR TRIM(location_name) = '')
+                  AND (
+                      location_name IS NULL
+                      OR TRIM(location_name) = ''
+                  )
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw record(s) with NULL or empty location_name.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw weather record(s) "
+                "with NULL or empty location_name."
+            ),
+        },
+        {
+            "table": "raw.weather_hourly",
+            "name": "raw_weather_hourly_lat_lon_valid",
+            "sql": """
+                SELECT COUNT(*) AS failed_count
+                FROM raw.weather_hourly
+                WHERE batch_id = :batch_id
+                  AND (
+                      latitude IS NULL
+                      OR longitude IS NULL
+                      OR latitude < -90
+                      OR latitude > 90
+                      OR longitude < -180
+                      OR longitude > 180
+                  )
+            """,
+            "severity": "CRITICAL",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw weather record(s) "
+                "with invalid latitude/longitude."
+            ),
         },
         {
             "table": "raw.weather_hourly",
@@ -84,7 +129,11 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
             "sql": """
                 SELECT COALESCE(SUM(duplicate_count - 1), 0) AS failed_count
                 FROM (
-                    SELECT location_name, weather_time, batch_id, COUNT(*) AS duplicate_count
+                    SELECT
+                        location_name,
+                        weather_time,
+                        batch_id,
+                        COUNT(*) AS duplicate_count
                     FROM raw.weather_hourly
                     WHERE batch_id = :batch_id
                     GROUP BY location_name, weather_time, batch_id
@@ -92,8 +141,12 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 ) dup
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} duplicate weather raw record(s) by location+time.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} duplicate raw weather "
+                "record(s) by location_name + weather_time + batch_id."
+            ),
         },
+
         # ==================================================
         # WEATHER STAGING LAYER CHECKS
         # ==================================================
@@ -118,7 +171,50 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND weather_time IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL weather_time.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with NULL weather_time."
+            ),
+        },
+        {
+            "table": "staging.weather_hourly",
+            "name": "staging_weather_hourly_location_name_not_null",
+            "sql": """
+                SELECT COUNT(*) AS failed_count
+                FROM staging.weather_hourly
+                WHERE batch_id = :batch_id
+                  AND (
+                      location_name IS NULL
+                      OR TRIM(location_name) = ''
+                  )
+            """,
+            "severity": "CRITICAL",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with NULL or empty location_name."
+            ),
+        },
+        {
+            "table": "staging.weather_hourly",
+            "name": "staging_weather_hourly_lat_lon_valid",
+            "sql": """
+                SELECT COUNT(*) AS failed_count
+                FROM staging.weather_hourly
+                WHERE batch_id = :batch_id
+                  AND (
+                      latitude IS NULL
+                      OR longitude IS NULL
+                      OR latitude < -90
+                      OR latitude > 90
+                      OR longitude < -180
+                      OR longitude > 180
+                  )
+            """,
+            "severity": "CRITICAL",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with invalid latitude/longitude."
+            ),
         },
         {
             "table": "staging.weather_hourly",
@@ -128,10 +224,16 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 FROM staging.weather_hourly
                 WHERE batch_id = :batch_id
                   AND temperature IS NOT NULL
-                  AND (temperature < -50 OR temperature > 60)
+                  AND (
+                      temperature < -50
+                      OR temperature > 60
+                  )
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with temperature outside [-50, 60] range.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with temperature outside [-50, 60] range."
+            ),
         },
         {
             "table": "staging.weather_hourly",
@@ -144,7 +246,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND precipitation < 0
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with negative precipitation.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with negative precipitation."
+            ),
         },
         {
             "table": "staging.weather_hourly",
@@ -157,7 +262,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND wind_speed < 0
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with negative wind_speed.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with negative wind_speed."
+            ),
         },
         {
             "table": "staging.weather_hourly",
@@ -169,24 +277,62 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND fetched_at IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL fetched_at.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging weather record(s) "
+                "with NULL fetched_at."
+            ),
+        },
+        {
+            "table": "staging.weather_hourly",
+            "name": "staging_weather_hourly_unique",
+            "sql": """
+                SELECT COALESCE(SUM(duplicate_count - 1), 0) AS failed_count
+                FROM (
+                    SELECT
+                        location_name,
+                        weather_time,
+                        batch_id,
+                        COUNT(*) AS duplicate_count
+                    FROM staging.weather_hourly
+                    WHERE batch_id = :batch_id
+                    GROUP BY location_name, weather_time, batch_id
+                    HAVING COUNT(*) > 1
+                ) dup
+            """,
+            "severity": "CRITICAL",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} duplicate staging weather "
+                "record(s) by location_name + weather_time + batch_id."
+            ),
         },
         {
             "table": "staging.weather_hourly",
             "name": "weather_raw_to_staging_count_match",
             "sql": """
-                WITH raw_cnt AS (
-                    SELECT COUNT(*) AS cnt FROM raw.weather_hourly WHERE batch_id = :batch_id
+                WITH raw_count AS (
+                    SELECT COUNT(*) AS cnt
+                    FROM raw.weather_hourly
+                    WHERE batch_id = :batch_id
                 ),
-                stg_cnt AS (
-                    SELECT COUNT(*) AS cnt FROM staging.weather_hourly WHERE batch_id = :batch_id
+                staging_count AS (
+                    SELECT COUNT(*) AS cnt
+                    FROM staging.weather_hourly
+                    WHERE batch_id = :batch_id
                 )
-                SELECT ABS(raw_cnt.cnt - stg_cnt.cnt) AS failed_count
-                FROM raw_cnt, stg_cnt
+                SELECT
+                    CASE
+                        WHEN raw_count.cnt = staging_count.cnt THEN 0
+                        ELSE ABS(raw_count.cnt - staging_count.cnt)
+                    END AS failed_count
+                FROM raw_count, staging_count
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Weather raw ({count} difference) staging counts mismatch.",
+            "msg_template": (
+                "Batch {batch_id}: Weather raw and staging counts do not match. "
+                "Difference: {count} record(s)."
+            ),
         },
+
         # ==================================================
         # CALENDAR RAW LAYER CHECKS
         # ==================================================
@@ -211,7 +357,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND calendar_date IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw calendar record(s) with NULL calendar_date.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw calendar record(s) "
+                "with NULL calendar_date."
+            ),
         },
         {
             "table": "raw.calendar",
@@ -223,7 +372,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND raw_calendar IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} raw calendar record(s) with NULL raw_calendar.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} raw calendar record(s) "
+                "with NULL raw_calendar."
+            ),
         },
         {
             "table": "raw.calendar",
@@ -231,7 +383,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
             "sql": """
                 SELECT COALESCE(SUM(duplicate_count - 1), 0) AS failed_count
                 FROM (
-                    SELECT calendar_date, batch_id, COUNT(*) AS duplicate_count
+                    SELECT
+                        calendar_date,
+                        batch_id,
+                        COUNT(*) AS duplicate_count
                     FROM raw.calendar
                     WHERE batch_id = :batch_id
                     GROUP BY calendar_date, batch_id
@@ -239,8 +394,12 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 ) dup
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} duplicate calendar dates in raw layer.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} duplicate calendar date(s) "
+                "in raw layer."
+            ),
         },
+
         # ==================================================
         # CALENDAR STAGING LAYER CHECKS
         # ==================================================
@@ -265,19 +424,37 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND calendar_date IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL calendar_date.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging calendar record(s) "
+                "with NULL calendar_date."
+            ),
         },
         {
             "table": "staging.calendar",
-            "name": "staging_calendar_day_of_week_not_null",
+            "name": "staging_calendar_day_of_week_valid",
             "sql": """
                 SELECT COUNT(*) AS failed_count
                 FROM staging.calendar
                 WHERE batch_id = :batch_id
-                  AND day_of_week IS NULL
+                  AND (
+                      day_of_week IS NULL
+                      OR TRIM(day_of_week) = ''
+                      OR TRIM(day_of_week) NOT IN (
+                          'Monday',
+                          'Tuesday',
+                          'Wednesday',
+                          'Thursday',
+                          'Friday',
+                          'Saturday',
+                          'Sunday'
+                      )
+                  )
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL day_of_week.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging calendar record(s) "
+                "with invalid day_of_week."
+            ),
         },
         {
             "table": "staging.calendar",
@@ -289,7 +466,10 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND is_weekend IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL is_weekend.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging calendar record(s) "
+                "with NULL is_weekend."
+            ),
         },
         {
             "table": "staging.calendar",
@@ -301,23 +481,59 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                   AND is_holiday IS NULL
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Found {count} staging record(s) with NULL is_holiday.",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} staging calendar record(s) "
+                "with NULL is_holiday."
+            ),
+        },
+        {
+            "table": "staging.calendar",
+            "name": "staging_calendar_unique",
+            "sql": """
+                SELECT COALESCE(SUM(duplicate_count - 1), 0) AS failed_count
+                FROM (
+                    SELECT
+                        calendar_date,
+                        batch_id,
+                        COUNT(*) AS duplicate_count
+                    FROM staging.calendar
+                    WHERE batch_id = :batch_id
+                    GROUP BY calendar_date, batch_id
+                    HAVING COUNT(*) > 1
+                ) dup
+            """,
+            "severity": "CRITICAL",
+            "msg_template": (
+                "Batch {batch_id}: Found {count} duplicate calendar date(s) "
+                "in staging layer."
+            ),
         },
         {
             "table": "staging.calendar",
             "name": "calendar_raw_to_staging_count_match",
             "sql": """
-                WITH raw_cnt AS (
-                    SELECT COUNT(*) AS cnt FROM raw.calendar WHERE batch_id = :batch_id
+                WITH raw_count AS (
+                    SELECT COUNT(*) AS cnt
+                    FROM raw.calendar
+                    WHERE batch_id = :batch_id
                 ),
-                stg_cnt AS (
-                    SELECT COUNT(*) AS cnt FROM staging.calendar WHERE batch_id = :batch_id
+                staging_count AS (
+                    SELECT COUNT(*) AS cnt
+                    FROM staging.calendar
+                    WHERE batch_id = :batch_id
                 )
-                SELECT ABS(raw_cnt.cnt - stg_cnt.cnt) AS failed_count
-                FROM raw_cnt, stg_cnt
+                SELECT
+                    CASE
+                        WHEN raw_count.cnt = staging_count.cnt THEN 0
+                        ELSE ABS(raw_count.cnt - staging_count.cnt)
+                    END AS failed_count
+                FROM raw_count, staging_count
             """,
             "severity": "CRITICAL",
-            "msg_template": "Batch {batch_id}: Calendar raw ({count} difference) staging counts mismatch.",
+            "msg_template": (
+                "Batch {batch_id}: Calendar raw and staging counts do not match. "
+                "Difference: {count} record(s)."
+            ),
         },
     ]
 
@@ -333,6 +549,7 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                     batch_id=batch_id,
                     count=failed_count,
                 )
+
                 status = "failed"
 
                 if check["severity"] == "CRITICAL":
@@ -341,14 +558,17 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                         f"on {check['table']} - {message}"
                     )
                     critical_failures.append(f"{check['name']}: {message}")
+
                 else:
                     logger.warning(
                         f"DQ Check WARNING: {check['name']} "
                         f"on {check['table']} - {message}"
                     )
+
             else:
                 status = "passed"
                 message = f"Batch {batch_id}: All records passed check."
+
                 logger.info(
                     f"DQ Check PASSED: {check['name']} on {check['table']}"
                 )
@@ -368,6 +588,7 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 f"Batch {batch_id}: Execution error while running "
                 f"DQ check '{check['name']}': {e}"
             )
+
             logger.error(error_message)
 
             write_dq_result(
@@ -379,6 +600,7 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
                 severity=check["severity"],
                 message=error_message,
             )
+
             if check["severity"] == "CRITICAL":
                 critical_failures.append(
                     f"{check['name']} execution error: {e}"
@@ -386,10 +608,12 @@ def run_weather_calendar_dq_checks(run_id: str, batch_id: str) -> None:
 
     if critical_failures:
         error_message = "; ".join(critical_failures)
+
         logger.error(
             f"Critical weather_calendar data quality check failures: "
             f"{error_message}"
         )
+
         raise ValueError(
             f"Critical weather_calendar DQ checks failed: {error_message}"
         )
