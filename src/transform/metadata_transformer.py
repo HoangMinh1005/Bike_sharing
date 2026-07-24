@@ -237,7 +237,6 @@ def transform_vehicle_types(batch_id: str) -> int:
     - vehicle_type_id
 
     Optional:
-    - vehicle_type_name
     - form_factor
     - propulsion_type
     - max_range_meters
@@ -249,7 +248,6 @@ def transform_vehicle_types(batch_id: str) -> int:
     sql = """
         INSERT INTO staging.vehicle_types (
             vehicle_type_id,
-            vehicle_type_name,
             form_factor,
             propulsion_type,
             max_range_meters,
@@ -257,7 +255,6 @@ def transform_vehicle_types(batch_id: str) -> int:
             loaded_at
         ) VALUES (
             :vehicle_type_id,
-            :vehicle_type_name,
             :form_factor,
             :propulsion_type,
             :max_range_meters,
@@ -265,7 +262,6 @@ def transform_vehicle_types(batch_id: str) -> int:
             CURRENT_TIMESTAMP
         )
         ON CONFLICT (vehicle_type_id) DO UPDATE SET
-            vehicle_type_name = EXCLUDED.vehicle_type_name,
             form_factor = EXCLUDED.form_factor,
             propulsion_type = EXCLUDED.propulsion_type,
             max_range_meters = EXCLUDED.max_range_meters,
@@ -289,7 +285,6 @@ def transform_vehicle_types(batch_id: str) -> int:
 
         params = {
             "vehicle_type_id": vehicle_type_id,
-            "vehicle_type_name": vehicle_type.get("name"),
             "form_factor": vehicle_type.get("form_factor"),
             "propulsion_type": vehicle_type.get("propulsion_type"),
             "max_range_meters": vehicle_type.get("max_range_meters"),

@@ -67,9 +67,8 @@ Tầng Staging trích xuất các thuộc tính từ tài liệu JSON trong tầ
 
 ### 2.3. `staging.vehicle_types`
 * `vehicle_type_id` (VARCHAR(50), PRIMARY KEY)
-* `vehicle_type_name` (VARCHAR(100))
-* `form_factor` (VARCHAR(50), NOT NULL)
-* `propulsion_type` (VARCHAR(50), NOT NULL)
+* `propulsion_type` (VARCHAR(50))
+* `form_factor` (VARCHAR(50))
 * `max_range_meters` (INTEGER)
 * `loaded_at` (TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP)
 
@@ -200,7 +199,7 @@ Tầng Mart chứa dữ liệu đã được làm sạch, kết hợp và tổng
 * **Khóa duy nhất**: `vehicle_type_id` + `date` + `hour`
 * **Cấu trúc**:
   * `date` (DATE), `hour` (INTEGER)
-  * `vehicle_type_id` (VARCHAR(50)), `vehicle_type_name` (VARCHAR(100))
+  * `vehicle_type_id` (VARCHAR(50))
   * `form_factor` (VARCHAR(50)), `propulsion_type` (VARCHAR(50))
   * `total_available` (INTEGER): Tổng số xe loại này sẵn có trong hệ thống.
   * `avg_available_per_station` (NUMERIC(6, 2))

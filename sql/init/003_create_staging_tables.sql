@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS staging.regions (
 
 CREATE TABLE IF NOT EXISTS staging.vehicle_types (
     vehicle_type_id VARCHAR(100) PRIMARY KEY,
-    vehicle_type_name TEXT,
     form_factor TEXT,
     propulsion_type TEXT,
     max_range_meters NUMERIC NULL,
