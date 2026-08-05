@@ -116,9 +116,9 @@ export const SystemOverviewPage: React.FC = () => {
           icon={Activity}
         />
         <KpiCard
-          title="High Demand Stations"
+          title="Hourly High-Demand Stations"
           value={formatNumber(activeSummary.high_demand_station_count)}
-          subtitle={`${formatNumber(activeSummary.empty_station_count)} empty stations`}
+          subtitle={`Experienced shortage in 1+ hours (${formatNumber(activeSummary.empty_station_count)} empty)`}
           status={activeSummary.high_demand_station_count && activeSummary.high_demand_station_count > 50 ? 'WARNING' : 'HEALTHY'}
         />
         <KpiCard
