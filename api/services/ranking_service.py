@@ -11,7 +11,7 @@ def get_station_demand_ranking(
     ranking_date: str,
     region_id: Optional[str] = None,
     demand_category: Optional[str] = None,
-    top_n: int = 20,
+    top_n: Optional[int] = None,
 ) -> List[dict]:
     """
     Fetch station demand ranking for a target ranking date.
@@ -19,7 +19,7 @@ def get_station_demand_ranking(
     Source: mart.station_demand_ranking
     """
     where_clauses = ["ranking_date = CAST(:ranking_date AS DATE)"]
-    params = {"ranking_date": ranking_date, "top_n": top_n}
+    params: dict = {"ranking_date": ranking_date}
 
     if region_id:
         where_clauses.append("region_id = :region_id")
@@ -31,12 +31,17 @@ def get_station_demand_ranking(
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}"
 
+    limit_sql = ""
+    if top_n is not None:
+        limit_sql = "LIMIT :top_n"
+        params["top_n"] = top_n
+
     sql = f"""
         SELECT *
         FROM mart.station_demand_ranking
         {where_sql}
         ORDER BY demand_rank ASC
-        LIMIT :top_n
+        {limit_sql}
     """
     return fetch_all(sql, params)
 

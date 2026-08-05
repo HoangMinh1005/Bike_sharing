@@ -85,11 +85,16 @@ def search_stations_endpoint(
 @router.get("/{station_id}/daily", response_model=DataResponse[List[StationDailySummary]])
 def get_station_daily(
     station_id: str,
-    start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
-    end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
+    start_date: Optional[str] = Query(None, description="Optional start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Optional end date (YYYY-MM-DD)"),
 ):
     """Lấy chuỗi thời gian tổng hợp ngày của một trạm cụ thể."""
-    valid_start, valid_end = validate_date_range(start_date, end_date)
+    import pendulum
+
+    eff_end = end_date or pendulum.now("UTC").to_date_string()
+    eff_start = start_date or pendulum.now("UTC").subtract(days=30).to_date_string()
+
+    valid_start, valid_end = validate_date_range(eff_start, eff_end)
 
     cache_key = make_cache_key(
         "stations:detail:daily",
@@ -109,12 +114,17 @@ def get_station_daily(
 @router.get("/{station_id}/hourly", response_model=ListResponse[StationHourlyAvailability])
 def get_station_hourly(
     station_id: str,
-    start_time: str = Query(..., description="Start ISO datetime filter (YYYY-MM-DDTHH:MM:SS)"),
-    end_time: str = Query(..., description="End ISO datetime filter (YYYY-MM-DDTHH:MM:SS)"),
+    start_time: Optional[str] = Query(None, description="Optional start ISO datetime filter (YYYY-MM-DDTHH:MM:SS)"),
+    end_time: Optional[str] = Query(None, description="Optional end ISO datetime filter (YYYY-MM-DDTHH:MM:SS)"),
     pagination: tuple[int, int] = Depends(pagination_params),
 ):
     """Lấy chuỗi thời gian trạng thái trạm theo giờ của một trạm cụ thể."""
-    valid_start, valid_end = validate_datetime_range(start_time, end_time)
+    import pendulum
+
+    eff_end = end_time or pendulum.now("UTC").to_iso8601_string()
+    eff_start = start_time or pendulum.now("UTC").subtract(hours=24).to_iso8601_string()
+
+    valid_start, valid_end = validate_datetime_range(eff_start, eff_end)
     limit, offset = pagination
 
     cache_key = make_cache_key(

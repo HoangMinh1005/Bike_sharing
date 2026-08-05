@@ -99,7 +99,27 @@ docker compose up -d
 
 Sau khi khởi chạy thành công, các dịch vụ sẽ khả dụng tại các địa chỉ sau:
 
+* **React Dashboard Frontend**: [http://localhost:3000](http://localhost:3000) (hoặc `http://localhost:5173` khi chạy dev mode)
 * **Airflow Web UI**: [http://localhost:8080](http://localhost:8080) (Tài khoản: `admin` / Mật khẩu: `admin`)
 * **FastAPI Swagger API**: [http://localhost:8000/docs](http://localhost:8000/docs) (Xem tài liệu API và test trực tiếp các endpoint)
 * **pgAdmin (Database UI)**: [http://localhost:5050](http://localhost:5050) (Tài khoản: `admin@admin.com` / Mật khẩu: `admin`)
   * *Hướng dẫn kết nối database*: Tạo máy chủ mới trong pgAdmin với host là `postgres`, port `5432`, username `postgres`, password `postgres`.
+
+---
+
+## 5. React Dashboard Frontend
+
+Project cung cấp ứng dụng giao diện Dashboard được xây dựng bằng React 18, TypeScript, Vite, Tailwind CSS, TanStack Query và Recharts.
+
+### Tính năng chính:
+- **Read-only**: Gọi duy nhất tới REST API của FastAPI (`/api/v1`), không truy vấn PostgreSQL trực tiếp, không trigger DAG.
+- **7 Giao diện quan sát**: System Overview, Stations Availability, Station Detail, Regions Summary, Region Detail, Demand Ranking, Pipeline Health Monitoring.
+
+### Chạy Frontend ở môi trường Development:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Giao diện sẽ chạy tại địa chỉ `http://localhost:5173`.
+

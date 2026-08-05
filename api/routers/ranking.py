@@ -19,7 +19,7 @@ def get_ranking_stations(
     ranking_date: str = Query(..., description="Target ranking date (YYYY-MM-DD)"),
     region_id: Optional[str] = Query(None, description="Optional region filter"),
     demand_category: Optional[str] = Query(None, description="Optional demand category (HIGH, MEDIUM, LOW)"),
-    top_n: int = Query(20, ge=1, le=100, description="Top N stations to return"),
+    top_n: Optional[int] = Query(None, ge=1, le=5000, description="Optional top N stations limit"),
 ):
     """Lấy danh sách xếp hạng nhu cầu trạm vào một ngày cụ thể."""
     valid_date = validate_date_param(ranking_date, "ranking_date")
