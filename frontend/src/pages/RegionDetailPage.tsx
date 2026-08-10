@@ -11,6 +11,7 @@ import DateFilter from '../components/common/DateFilter';
 import { useRegionDaily, useRegionStations } from '../hooks/useRegions';
 import { useSystemLatest } from '../hooks/useSystem';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
+import { getPastDateString, getTodayDateString } from '../utils/date';
 import { StationDailySummary } from '../types/station';
 import { ArrowLeft, Compass, MapPin, Bike, Layers } from 'lucide-react';
 
@@ -23,7 +24,13 @@ export const RegionDetailPage: React.FC = () => {
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = summaryDate || latestDate || '';
 
-  const { data: dailyRes, isLoading: isDailyLoading, isError: isDailyError, refetch: refetchDaily } = useRegionDaily(regionId || '');
+  const todayStr = getTodayDateString();
+  const past30Str = getPastDateString(30);
+
+  const { data: dailyRes, isLoading: isDailyLoading, isError: isDailyError, refetch: refetchDaily } = useRegionDaily(
+    regionId || '',
+    { start_date: past30Str, end_date: todayStr }
+  );
   const { data: stationsRes, isLoading: isStationsLoading } = useRegionStations(regionId || '', { summary_date: effectiveDate });
 
   if (!regionId) {

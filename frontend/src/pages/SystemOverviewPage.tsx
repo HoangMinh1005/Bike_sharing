@@ -56,12 +56,23 @@ export const SystemOverviewPage: React.FC = () => {
     docksAvailable: item.total_docks_available || item.avg_docks_available || 0,
   }));
 
-  const hourlyChartData = hourlyList.map((item) => ({
-    hour: item.hour_bucket ? item.hour_bucket.substring(11, 16) : '-',
-    availabilityRate: item.avg_availability_rate ? item.avg_availability_rate * 100 : 0,
-    utilizationRate: item.avg_dock_utilization_rate ? item.avg_dock_utilization_rate * 100 : 0,
-    temperature: item.temperature || 0,
-  }));
+  const hasMultipleDays = new Set(hourlyList.map((item) => item.hour_bucket?.substring(0, 10))).size > 1;
+
+  const hourlyChartData = [...hourlyList]
+    .sort((a, b) => new Date(a.hour_bucket).getTime() - new Date(b.hour_bucket).getTime())
+    .map((item) => {
+      const rawBucket = item.hour_bucket || '';
+      const datePart = rawBucket.length >= 10 ? `${rawBucket.substring(8, 10)}/${rawBucket.substring(5, 7)}` : '';
+      const timePart = rawBucket.length >= 16 ? rawBucket.substring(11, 16) : '-';
+      const label = hasMultipleDays && datePart ? `${datePart} ${timePart}` : timePart;
+
+      return {
+        hour: label,
+        availabilityRate: item.avg_availability_rate ? item.avg_availability_rate * 100 : 0,
+        utilizationRate: item.avg_dock_utilization_rate ? item.avg_dock_utilization_rate * 100 : 0,
+        temperature: item.temperature !== undefined && item.temperature !== null ? Number(item.temperature) : 0,
+      };
+    });
 
   const dailyTableColumns: Column<SystemDailySummary>[] = [
     { key: 'summary_date', header: 'Summary Date', render: (r) => formatDate(r.summary_date) },
@@ -165,10 +176,15 @@ export const SystemOverviewPage: React.FC = () => {
             data={hourlyChartData}
             xAxisKey="hour"
             series={[
-              { key: 'availabilityRate', name: 'Hourly Availability (%)', color: '#10b981' },
-              { key: 'utilizationRate', name: 'Hourly Utilization (%)', color: '#6366f1' },
+              { key: 'availabilityRate', name: 'Hourly Availability (%)', color: '#10b981', yAxisId: 'left', valueFormatter: (v) => `${v.toFixed(1)}%` },
+              { key: 'utilizationRate', name: 'Hourly Utilization (%)', color: '#6366f1', yAxisId: 'left', valueFormatter: (v) => `${v.toFixed(1)}%` },
+              { key: 'temperature', name: 'Temperature (°C)', color: '#f59e0b', yAxisId: 'right', valueFormatter: (v) => `${v.toFixed(1)} °C` },
             ]}
             valueFormatter={(v) => `${v.toFixed(1)}%`}
+            rightYAxis={{
+              yAxisId: 'right',
+              valueFormatter: (v) => `${v.toFixed(1)}°C`,
+            }}
           />
         </div>
       )}

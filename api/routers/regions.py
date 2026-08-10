@@ -59,11 +59,16 @@ def get_regions_daily(
 @router.get("/{region_id}/daily", response_model=DataResponse[List[RegionDailySummary]])
 def get_region_daily(
     region_id: str,
-    start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
-    end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
+    start_date: Optional[str] = Query(None, description="Optional start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Optional end date (YYYY-MM-DD)"),
 ):
     """Lấy chuỗi thời gian tổng hợp ngày của một khu vực cụ thể."""
-    valid_start, valid_end = validate_date_range(start_date, end_date)
+    import pendulum
+
+    eff_end = end_date or pendulum.now("UTC").to_date_string()
+    eff_start = start_date or pendulum.now("UTC").subtract(days=30).to_date_string()
+
+    valid_start, valid_end = validate_date_range(eff_start, eff_end)
 
     cache_key = make_cache_key(
         "regions:detail:daily",
