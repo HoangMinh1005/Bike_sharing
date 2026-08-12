@@ -22,9 +22,17 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+import os
+
+frontend_origins_env = os.getenv("FRONTEND_ORIGINS", "*").strip()
+if frontend_origins_env == "*" or not frontend_origins_env:
+    allowed_origins = ["*"]
+else:
+    allowed_origins = [orig.strip() for orig in frontend_origins_env.split(",") if orig.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "OPTIONS", "POST", "PUT", "DELETE"],
     allow_headers=["*"],

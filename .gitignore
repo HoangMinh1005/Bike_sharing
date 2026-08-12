@@ -1,5 +1,16 @@
 # Environment variables and secrets
 .env
+.env.prod
+.env.*
+!.env.example
+
+# Database backups
+backups/
+*.sql.gz
+
+# Node & Frontend
+frontend/node_modules/
+frontend/dist/
 
 # Python cache and bytecode
 __pycache__/
