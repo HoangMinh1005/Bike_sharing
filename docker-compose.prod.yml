@@ -48,7 +48,7 @@ services:
       POSTGRES_DB: "${POSTGRES_DB:-bike_sharing}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/init/000_init_airflow_db.sql:/docker-entrypoint-initdb.d/000_init_airflow_db.sql:ro
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-bike_sharing}"]
       interval: 10s
