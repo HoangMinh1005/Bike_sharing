@@ -8,7 +8,9 @@ import LineChartCard from '../components/charts/LineChartCard';
 import BarChartCard from '../components/charts/BarChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import DateFilter from '../components/common/DateFilter';
+import FreshnessCard from '../components/common/FreshnessCard';
 import { useSystemDaily, useSystemHourly, useSystemLatest } from '../hooks/useSystem';
+import { useFreshnessSummary } from '../hooks/useFreshness';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
 import { getPastDateString } from '../utils/date';
 import { SystemDailySummary } from '../types/system';
@@ -18,6 +20,7 @@ export const SystemOverviewPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   const { data: latestRes, isLoading: isLatestLoading, isError: isLatestError, refetch: refetchLatest } = useSystemLatest();
+  const { data: freshnessRes, isLoading: isFreshnessLoading, isError: isFreshnessError, refetch: refetchFreshness } = useFreshnessSummary();
 
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = selectedDate || latestDate || '';
@@ -27,9 +30,18 @@ export const SystemOverviewPage: React.FC = () => {
   );
   const { data: hourlyRes } = useSystemHourly({ limit: 24 });
 
-  if (isLatestLoading) {
+  if (isLatestLoading && !latestRes) {
     return (
       <PageContainer title="System Overview">
+        <FreshnessCard
+          data={freshnessRes?.data}
+          isLoading={isFreshnessLoading}
+          isError={isFreshnessError}
+          onRefresh={() => {
+            refetchFreshness();
+            refetchLatest();
+          }}
+        />
         <LoadingState message="Fetching system latest summary..." />
       </PageContainer>
     );
@@ -38,7 +50,19 @@ export const SystemOverviewPage: React.FC = () => {
   if (isLatestError || !latestRes?.data) {
     return (
       <PageContainer title="System Overview">
-        <ErrorState message="Could not load system metrics from FastAPI backend." onRetry={refetchLatest} />
+        <FreshnessCard
+          data={freshnessRes?.data}
+          isLoading={isFreshnessLoading}
+          isError={isFreshnessError}
+          onRefresh={() => {
+            refetchFreshness();
+            refetchLatest();
+          }}
+        />
+        <ErrorState
+          message="No daily system summary records available yet. Data pipelines may be running."
+          onRetry={refetchLatest}
+        />
       </PageContainer>
     );
   }
@@ -90,6 +114,17 @@ export const SystemOverviewPage: React.FC = () => {
       description={`System-wide operational metrics for ${formatDate(activeSummary.summary_date)}`}
       action={<DateFilter value={effectiveDate} onChange={setSelectedDate} />}
     >
+      {/* Real-time Data Freshness & Pipeline Status */}
+      <FreshnessCard
+        data={freshnessRes?.data}
+        isLoading={isFreshnessLoading}
+        isError={isFreshnessError}
+        onRefresh={() => {
+          refetchFreshness();
+          refetchLatest();
+        }}
+      />
+
       {/* Top KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <KpiCard

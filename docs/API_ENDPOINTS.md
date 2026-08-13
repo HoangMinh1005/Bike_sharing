@@ -93,6 +93,46 @@ All API endpoints follow a consistent JSON response envelope structure:
 | `GET` | `/api/v1/pipelines/health/{dag_id}` | None | Get health summary for a specific monitored DAG. |
 | `GET` | `/api/v1/pipelines/runs/latest` | `limit` | Get recent pipeline runs execution history from `etl_metadata.pipeline_runs`. |
 
+### Data Freshness Endpoints (`/api/v1/freshness`)
+
+| Method | Endpoint | Query Parameters | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/freshness/summary` | None | Get system-wide data currency metrics, ingestion lags, and DAG execution statuses. |
+
+#### Freshness Latency Thresholds & Status Rules:
+
+| Component | Healthy (Live) | Warning (Lagging) | Stale (Delayed) | Unknown |
+| :--- | :--- | :--- | :--- | :--- |
+| **Station Status Snapshot** | $\le 30$ minutes lag | $30 - 60$ minutes lag | $> 60$ minutes lag | No data / Table missing |
+| **Hourly Mobility Mart** | $\le 2$ hours ($120$m) lag | $2 - 4$ hours ($120-240$m) lag | $> 4$ hours ($> 240$m) lag | No data / Table missing |
+| **Daily Summary Mart** | Today or Yesterday ($\le 1$ day) | $2$ days ago | $> 2$ days ago | No data / Table missing |
+| **Overall System Status** | Worst among all components: $\text{HEALTHY} < \text{WARNING} < \text{STALE} < \text{UNKNOWN}$ | | | |
+
+#### Example Freshness Response:
+```json
+{
+  "data": {
+    "status": "HEALTHY",
+    "checked_at": "2026-08-13T04:00:00Z",
+    "latest_station_status_snapshot_at": "2026-08-13T03:50:00Z",
+    "station_status_lag_minutes": 10.0,
+    "latest_hourly_mart_at": "2026-08-13T03:00:00Z",
+    "hourly_mart_lag_minutes": 60.0,
+    "latest_daily_summary_date": "2026-08-12",
+    "latest_pipeline_health_status": "HEALTHY",
+    "latest_successful_dag_runs": [
+      {
+        "dag_id": "station_status_snapshot_dag",
+        "latest_success_at": "2026-08-13T03:50:00Z",
+        "lag_minutes": 10.0,
+        "status": "HEALTHY"
+      }
+    ],
+    "warnings": []
+  }
+}
+```
+
 ---
 
 ## 4. Example cURL Commands

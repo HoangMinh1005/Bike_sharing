@@ -183,3 +183,23 @@ class StationMetadata(BaseSchema):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     capacity: Optional[int] = None
+
+
+class DagRunFreshness(BaseSchema):
+    dag_id: str
+    latest_success_at: Optional[datetime] = None
+    lag_minutes: Optional[float] = None
+    status: Literal["HEALTHY", "WARNING", "STALE", "UNKNOWN"] = "UNKNOWN"
+
+
+class DataFreshnessSummary(BaseSchema):
+    status: Literal["HEALTHY", "WARNING", "STALE", "UNKNOWN"]
+    checked_at: datetime
+    latest_station_status_snapshot_at: Optional[datetime] = None
+    station_status_lag_minutes: Optional[float] = None
+    latest_hourly_mart_at: Optional[datetime] = None
+    hourly_mart_lag_minutes: Optional[float] = None
+    latest_daily_summary_date: Optional[date] = None
+    latest_pipeline_health_status: Optional[str] = None
+    latest_successful_dag_runs: list[DagRunFreshness] = []
+    warnings: list[str] = []

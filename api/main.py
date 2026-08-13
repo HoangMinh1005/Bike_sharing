@@ -9,6 +9,7 @@ from api.routers.stations import router as stations_router
 from api.routers.regions import router as regions_router
 from api.routers.ranking import router as ranking_router
 from api.routers.pipelines import router as pipelines_router
+from api.routers.freshness import router as freshness_router
 from src.common.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,6 +47,7 @@ app.include_router(stations_router, prefix=api_v1_prefix)
 app.include_router(regions_router, prefix=api_v1_prefix)
 app.include_router(ranking_router, prefix=api_v1_prefix)
 app.include_router(pipelines_router, prefix=api_v1_prefix)
+app.include_router(freshness_router, prefix=api_v1_prefix)
 
 
 @app.get("/", tags=["Root"])
