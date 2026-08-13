@@ -4,12 +4,14 @@ import PageContainer from '../components/layout/PageContainer';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import DateFilter from '../components/common/DateFilter';
 import BarChartCard from '../components/charts/BarChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import { useRegionsDaily } from '../hooks/useRegions';
 import { useSystemLatest } from '../hooks/useSystem';
 import { formatNumber, formatPercent } from '../utils/format';
+import { parseApiError } from '../utils/error';
 import { RegionDailySummary } from '../types/region';
 
 export const RegionsPage: React.FC = () => {
@@ -20,11 +22,12 @@ export const RegionsPage: React.FC = () => {
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = summaryDate || latestDate || '';
 
-  const { data: regionsRes, isLoading, isError, refetch } = useRegionsDaily({
+  const { data: regionsRes, isLoading, isError, error, refetch } = useRegionsDaily({
     summary_date: effectiveDate,
   });
 
   const regions = regionsRes?.data || [];
+  const parsedError = isError ? parseApiError(error, 'No region summary records found for this date.') : null;
 
   // Chart data
   const regionChartData = regions.map((r) => ({
@@ -72,11 +75,25 @@ export const RegionsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Table */}
+      {/* Main Table or States */}
       {isLoading ? (
-        <LoadingState message="Loading regions daily summary..." />
-      ) : isError ? (
-        <ErrorState message="Could not load region summaries." onRetry={refetch} />
+        <LoadingState title="Loading Region Summaries" message="Fetching regional availability metrics..." />
+      ) : isError && parsedError ? (
+        <ErrorState
+          title={parsedError.title}
+          message={parsedError.message}
+          severity={parsedError.severity}
+          technicalDetails={parsedError.technicalDetails}
+          actionLabel="Retry"
+          onRetry={refetch}
+        />
+      ) : regions.length === 0 ? (
+        <EmptyState
+          title="No region summary available yet"
+          message="Region-level aggregations will appear after the station and region metadata pipelines complete."
+          actionLabel="Refresh Regions"
+          onAction={refetch}
+        />
       ) : (
         <div>
           <SectionTitle

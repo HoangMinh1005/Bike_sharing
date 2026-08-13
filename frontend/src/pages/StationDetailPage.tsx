@@ -5,11 +5,13 @@ import KpiCard from '../components/common/KpiCard';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import LineChartCard from '../components/charts/LineChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import { getPastDateString, getTodayDateString } from '../utils/date';
 import { useStationDaily, useStationHourly } from '../hooks/useStations';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
+import { parseApiError } from '../utils/error';
 import { StationDailySummary } from '../types/station';
 import { ArrowLeft, MapPin, Bike, Layers, Clock } from 'lucide-react';
 
@@ -20,10 +22,13 @@ export const StationDetailPage: React.FC = () => {
   const todayStr = getTodayDateString();
   const past30Str = getPastDateString(30);
 
-  const { data: dailyRes, isLoading: isDailyLoading, isError: isDailyError, refetch: refetchDaily } = useStationDaily(
-    stationId || '',
-    { start_date: past30Str, end_date: todayStr }
-  );
+  const {
+    data: dailyRes,
+    isLoading: isDailyLoading,
+    isError: isDailyError,
+    error: dailyError,
+    refetch: refetchDaily,
+  } = useStationDaily(stationId || '', { start_date: past30Str, end_date: todayStr });
 
   const { data: hourlyRes, isLoading: isHourlyLoading } = useStationHourly(
     stationId || '',
@@ -33,23 +38,59 @@ export const StationDetailPage: React.FC = () => {
   if (!stationId) {
     return (
       <PageContainer title="Station Detail">
-        <ErrorState message="No station ID provided in route path." />
+        <ErrorState
+          title="Invalid Station ID"
+          message="No valid station identifier provided in the URL route path."
+          severity="warning"
+          actionLabel="Back to Stations"
+          onRetry={() => navigate('/stations')}
+        />
       </PageContainer>
     );
   }
 
-  if (isDailyLoading || isHourlyLoading) {
+  if (isDailyLoading && isHourlyLoading) {
     return (
       <PageContainer title={`Station: ${stationId}`}>
-        <LoadingState message={`Fetching station detail for ${stationId}...`} />
+        <LoadingState title={`Fetching Station ${stationId}`} message="Retrieving station metrics and daily summary..." />
       </PageContainer>
     );
   }
 
-  if (isDailyError || !dailyRes?.data || dailyRes.data.length === 0) {
+  const parsedError = isDailyError ? parseApiError(dailyError, `No historical daily data found for station '${stationId}'.`) : null;
+
+  if (parsedError && (parsedError.isNetworkError || parsedError.isServerError)) {
     return (
       <PageContainer title={`Station: ${stationId}`}>
-        <ErrorState message={`No daily history found for station ID '${stationId}'.`} onRetry={refetchDaily} />
+        <ErrorState
+          title={parsedError.title}
+          message={parsedError.message}
+          severity={parsedError.severity}
+          technicalDetails={parsedError.technicalDetails}
+          actionLabel="Retry"
+          onRetry={refetchDaily}
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!dailyRes?.data || dailyRes.data.length === 0) {
+    return (
+      <PageContainer title={`Station: ${stationId}`}>
+        <div className="mb-4">
+          <button
+            onClick={() => navigate('/stations')}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Stations
+          </button>
+        </div>
+        <EmptyState
+          title={`No history for station '${stationId}' yet`}
+          message="Real-time observations are being collected, but daily aggregations have not been computed yet for this station."
+          actionLabel="Refresh Data"
+          onAction={refetchDaily}
+        />
       </PageContainer>
     );
   }

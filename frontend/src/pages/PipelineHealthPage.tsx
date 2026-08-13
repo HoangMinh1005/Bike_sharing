@@ -4,37 +4,67 @@ import KpiCard from '../components/common/KpiCard';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import StatusBadge from '../components/common/StatusBadge';
 import BarChartCard from '../components/charts/BarChartCard';
 import DonutChartCard from '../components/charts/DonutChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import { useLatestPipelineHealth, useLatestPipelineRuns } from '../hooks/usePipelines';
 import { formatDateTime, formatDurationMinutes, formatNumber } from '../utils/format';
+import { parseApiError } from '../utils/error';
 import { PipelineHealth, PipelineRun } from '../types/pipeline';
 import { Activity, ShieldCheck, AlertTriangle, XCircle, Clock } from 'lucide-react';
 
 export const PipelineHealthPage: React.FC = () => {
-  const { data: healthRes, isLoading: isHealthLoading, isError: isHealthError, refetch: refetchHealth } = useLatestPipelineHealth();
+  const {
+    data: healthRes,
+    isLoading: isHealthLoading,
+    isError: isHealthError,
+    error: healthError,
+    refetch: refetchHealth,
+  } = useLatestPipelineHealth();
   const { data: runsRes, isLoading: isRunsLoading } = useLatestPipelineRuns(20);
 
-  if (isHealthLoading || isRunsLoading) {
+  if (isHealthLoading && isRunsLoading) {
     return (
       <PageContainer title="Pipeline Health Monitoring">
-        <LoadingState message="Loading pipeline health status..." />
+        <LoadingState title="Loading Pipeline Health" message="Fetching DAG health metrics and recent run executions..." />
       </PageContainer>
     );
   }
 
-  if (isHealthError || !healthRes?.data) {
+  const parsedError = isHealthError ? parseApiError(healthError, 'No pipeline health summary records found in metadata.') : null;
+
+  if (parsedError && (parsedError.isNetworkError || parsedError.isServerError)) {
     return (
       <PageContainer title="Pipeline Health Monitoring">
-        <ErrorState message="Could not load pipeline health metrics from backend." onRetry={refetchHealth} />
+        <ErrorState
+          title={parsedError.title}
+          message={parsedError.message}
+          severity={parsedError.severity}
+          technicalDetails={parsedError.technicalDetails}
+          actionLabel="Retry"
+          onRetry={refetchHealth}
+        />
       </PageContainer>
     );
   }
 
-  const pipelines = healthRes.data;
+  const pipelines = healthRes?.data || [];
   const recentRuns = runsRes?.data || [];
+
+  if (pipelines.length === 0) {
+    return (
+      <PageContainer title="Pipeline Health Monitoring">
+        <EmptyState
+          title="Pipeline health has not been recorded yet"
+          message="The pipeline health monitoring DAG (pipeline_health_dag) records execution and data quality metrics every 30 minutes."
+          actionLabel="Refresh Health Status"
+          onAction={refetchHealth}
+        />
+      </PageContainer>
+    );
+  }
 
   // Summary status counts
   const healthyCount = pipelines.filter((p) => p.health_status === 'HEALTHY').length;

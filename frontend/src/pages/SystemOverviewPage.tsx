@@ -4,6 +4,8 @@ import KpiCard from '../components/common/KpiCard';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import PartialDataWarning from '../components/common/PartialDataWarning';
+import DataUnavailableState from '../components/common/DataUnavailableState';
 import LineChartCard from '../components/charts/LineChartCard';
 import BarChartCard from '../components/charts/BarChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
@@ -13,14 +15,27 @@ import { useSystemDaily, useSystemHourly, useSystemLatest } from '../hooks/useSy
 import { useFreshnessSummary } from '../hooks/useFreshness';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
 import { getPastDateString } from '../utils/date';
+import { parseApiError } from '../utils/error';
 import { SystemDailySummary } from '../types/system';
 import { Bike, Layers, MapPin, Activity, Thermometer, Sun } from 'lucide-react';
 
 export const SystemOverviewPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  const { data: latestRes, isLoading: isLatestLoading, isError: isLatestError, refetch: refetchLatest } = useSystemLatest();
-  const { data: freshnessRes, isLoading: isFreshnessLoading, isError: isFreshnessError, refetch: refetchFreshness } = useFreshnessSummary();
+  const {
+    data: latestRes,
+    isLoading: isLatestLoading,
+    isError: isLatestError,
+    error: latestError,
+    refetch: refetchLatest,
+  } = useSystemLatest();
+
+  const {
+    data: freshnessRes,
+    isLoading: isFreshnessLoading,
+    isError: isFreshnessError,
+    refetch: refetchFreshness,
+  } = useFreshnessSummary();
 
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = selectedDate || latestDate || '';
@@ -28,9 +43,13 @@ export const SystemOverviewPage: React.FC = () => {
   const { data: dailyRes } = useSystemDaily(
     effectiveDate ? { start_date: getPastDateString(14, effectiveDate), end_date: effectiveDate } : undefined
   );
-  const { data: hourlyRes } = useSystemHourly({ limit: 24 });
+  const { data: hourlyRes, isLoading: isHourlyLoading } = useSystemHourly({ limit: 24 });
 
-  if (isLatestLoading && !latestRes) {
+  const hourlyList = hourlyRes?.data || [];
+  const parsedLatestError = isLatestError ? parseApiError(latestError) : null;
+
+  // 1. Loading State (initial fetch)
+  if (isLatestLoading && isHourlyLoading && !latestRes && hourlyList.length === 0) {
     return (
       <PageContainer title="System Overview">
         <FreshnessCard
@@ -42,12 +61,13 @@ export const SystemOverviewPage: React.FC = () => {
             refetchLatest();
           }}
         />
-        <LoadingState message="Fetching system latest summary..." />
+        <LoadingState title="Loading System Overview" message="Fetching system summary and mobility metrics from FastAPI..." />
       </PageContainer>
     );
   }
 
-  if (isLatestError || !latestRes?.data) {
+  // 2. Critical Network or Server 500 Error
+  if (parsedLatestError && (parsedLatestError.isNetworkError || parsedLatestError.isServerError)) {
     return (
       <PageContainer title="System Overview">
         <FreshnessCard
@@ -60,16 +80,24 @@ export const SystemOverviewPage: React.FC = () => {
           }}
         />
         <ErrorState
-          message="No daily system summary records available yet. Data pipelines may be running."
-          onRetry={refetchLatest}
+          title={parsedLatestError.title}
+          message={parsedLatestError.message}
+          severity={parsedLatestError.severity}
+          technicalDetails={parsedLatestError.technicalDetails}
+          actionLabel="Retry Connection"
+          onRetry={() => {
+            refetchFreshness();
+            refetchLatest();
+          }}
         />
       </PageContainer>
     );
   }
 
-  const dailyList = dailyRes?.data || [latestRes.data];
-  const activeSummary = dailyList.find((item) => item.summary_date === effectiveDate) || dailyList[dailyList.length - 1] || latestRes.data;
-  const hourlyList = hourlyRes?.data || [];
+  const dailyList = dailyRes?.data || (latestRes?.data ? [latestRes.data] : []);
+  const activeSummary = dailyList.find((item) => item.summary_date === effectiveDate) || dailyList[dailyList.length - 1] || latestRes?.data;
+  const hasDailyData = Boolean(activeSummary);
+  const hasHourlyData = hourlyList.length > 0;
 
   // Chart data formatting
   const dailyChartData = dailyList.map((item) => ({
@@ -107,6 +135,80 @@ export const SystemOverviewPage: React.FC = () => {
     { key: 'total_docks_available', header: 'Docks Available', align: 'right', render: (r) => formatNumber(r.total_docks_available || r.avg_docks_available) },
     { key: 'avg_temperature', header: 'Avg Temp (°C)', align: 'right', render: (r) => (r.avg_temperature !== undefined ? `${r.avg_temperature.toFixed(1)}°C` : '-') },
   ];
+
+  // Case: No daily data yet, but hourly data or partial data may be available
+  if (!hasDailyData) {
+    return (
+      <PageContainer
+        title="System Overview"
+        description="System-wide operational metrics and real-time mobility monitoring"
+        action={<DateFilter value={effectiveDate} onChange={setSelectedDate} />}
+      >
+        {/* Real-time Data Freshness & Pipeline Status */}
+        <FreshnessCard
+          data={freshnessRes?.data}
+          isLoading={isFreshnessLoading}
+          isError={isFreshnessError}
+          onRefresh={() => {
+            refetchFreshness();
+            refetchLatest();
+          }}
+        />
+
+        {hasHourlyData ? (
+          <>
+            <PartialDataWarning
+              title="Daily summary is not ready yet"
+              message="Daily summary requires hourly mart data for the target date. It will become available after enough hourly snapshots are collected."
+              missingSources={['mart.daily_system_summary']}
+              severity="warning"
+            />
+
+            {/* Hourly System Mobility Chart */}
+            <div className="mb-8">
+              <LineChartCard
+                title="Recent Hourly Mobility Rate (%)"
+                subtitle="Hourly system availability and weather temperature"
+                data={hourlyChartData}
+                xAxisKey="hour"
+                series={[
+                  { key: 'availabilityRate', name: 'Hourly Availability (%)', color: '#10b981', yAxisId: 'left', valueFormatter: (v) => `${v.toFixed(1)}%` },
+                  { key: 'utilizationRate', name: 'Hourly Utilization (%)', color: '#6366f1', yAxisId: 'left', valueFormatter: (v) => `${v.toFixed(1)}%` },
+                  { key: 'temperature', name: 'Temperature (°C)', color: '#f59e0b', yAxisId: 'right', valueFormatter: (v) => `${v.toFixed(1)} °C` },
+                ]}
+                valueFormatter={(v) => `${v.toFixed(1)}%`}
+                rightYAxis={{
+                  yAxisId: 'right',
+                  valueFormatter: (v) => `${v.toFixed(1)}°C`,
+                }}
+              />
+            </div>
+
+            <DataUnavailableState
+              title="Daily metrics pending aggregation"
+              message="Daily KPI metrics and summaries will be automatically calculated by the daily_summary_dag."
+              reason="Requires 24 hourly snapshots to compute 24-hour daily availability and dock utilization."
+              iconType="calendar"
+              onRetry={refetchLatest}
+              actionLabel="Check Daily Summary"
+            />
+          </>
+        ) : (
+          <DataUnavailableState
+            title="System summary data is not ready yet"
+            message="The pipelines are active, but this dataset has not accumulated enough hourly or daily records yet."
+            reason="Airflow station_status_snapshot_dag and hourly_mart_build_dag must finish processing snapshots."
+            iconType="database"
+            onRetry={() => {
+              refetchFreshness();
+              refetchLatest();
+            }}
+            actionLabel="Refresh Data"
+          />
+        )}
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer

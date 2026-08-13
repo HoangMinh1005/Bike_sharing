@@ -4,12 +4,14 @@ import PageContainer from '../components/layout/PageContainer';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import DateFilter from '../components/common/DateFilter';
 import BarChartCard from '../components/charts/BarChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import { useStationSearch, useStationsDaily } from '../hooks/useStations';
 import { useSystemLatest } from '../hooks/useSystem';
 import { formatNumber, formatPercent } from '../utils/format';
+import { parseApiError } from '../utils/error';
 import { StationDailySummary, StationMetadata } from '../types/station';
 import { Search, MapPin } from 'lucide-react';
 
@@ -24,7 +26,7 @@ export const StationsPage: React.FC = () => {
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = summaryDate || latestDate || '';
 
-  const { data: stationsRes, isLoading, isError, refetch } = useStationsDaily({
+  const { data: stationsRes, isLoading, isError, error, refetch } = useStationsDaily({
     summary_date: effectiveDate,
     limit: 50,
     sort_by: sortBy,
@@ -35,6 +37,7 @@ export const StationsPage: React.FC = () => {
 
   const stations = stationsRes?.data || [];
   const searchResults = searchRes?.data || [];
+  const parsedError = isError ? parseApiError(error, 'No station summary records found for this date.') : null;
 
   // Top 10 stations for chart
   const top10Stations = [...stations]
@@ -64,7 +67,7 @@ export const StationsPage: React.FC = () => {
       action={<DateFilter value={effectiveDate} onChange={setSummaryDate} />}
     >
       {/* Search & Sort Controls */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm mb-8 space-y-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs mb-8 space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Station Search Input */}
           <div className="relative flex-1 w-full">
@@ -115,7 +118,7 @@ export const StationsPage: React.FC = () => {
             {isSearchLoading ? (
               <p className="text-xs text-slate-400">Searching stations...</p>
             ) : searchResults.length === 0 ? (
-              <p className="text-xs text-slate-500">No stations found matching "{searchTerm}"</p>
+              <p className="text-xs text-slate-500">No stations matched your search "{searchTerm}"</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                 {searchResults.map((st: StationMetadata) => (
@@ -151,11 +154,25 @@ export const StationsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Table */}
+      {/* Main Table or States */}
       {isLoading ? (
-        <LoadingState message="Loading stations summary data..." />
-      ) : isError ? (
-        <ErrorState message="Could not load stations summary data." onRetry={refetch} />
+        <LoadingState title="Loading Station Data" message="Fetching station availability metrics..." />
+      ) : isError && parsedError ? (
+        <ErrorState
+          title={parsedError.title}
+          message={parsedError.message}
+          severity={parsedError.severity}
+          technicalDetails={parsedError.technicalDetails}
+          actionLabel="Retry"
+          onRetry={refetch}
+        />
+      ) : stations.length === 0 ? (
+        <EmptyState
+          title="No station data available yet"
+          message="The GBFS pipeline is ingesting real-time data, but station summaries have not been recorded for this date yet."
+          actionLabel="Refresh Stations"
+          onAction={refetch}
+        />
       ) : (
         <div>
           <SectionTitle

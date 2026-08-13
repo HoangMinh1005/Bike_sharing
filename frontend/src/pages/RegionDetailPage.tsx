@@ -5,6 +5,7 @@ import KpiCard from '../components/common/KpiCard';
 import SectionTitle from '../components/common/SectionTitle';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
+import EmptyState from '../components/common/EmptyState';
 import LineChartCard from '../components/charts/LineChartCard';
 import DataTable, { Column } from '../components/table/DataTable';
 import DateFilter from '../components/common/DateFilter';
@@ -12,6 +13,7 @@ import { useRegionDaily, useRegionStations } from '../hooks/useRegions';
 import { useSystemLatest } from '../hooks/useSystem';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
 import { getPastDateString, getTodayDateString } from '../utils/date';
+import { parseApiError } from '../utils/error';
 import { StationDailySummary } from '../types/station';
 import { ArrowLeft, Compass, MapPin, Bike, Layers } from 'lucide-react';
 
@@ -27,32 +29,72 @@ export const RegionDetailPage: React.FC = () => {
   const todayStr = getTodayDateString();
   const past30Str = getPastDateString(30);
 
-  const { data: dailyRes, isLoading: isDailyLoading, isError: isDailyError, refetch: refetchDaily } = useRegionDaily(
-    regionId || '',
-    { start_date: past30Str, end_date: todayStr }
-  );
+  const {
+    data: dailyRes,
+    isLoading: isDailyLoading,
+    isError: isDailyError,
+    error: dailyError,
+    refetch: refetchDaily,
+  } = useRegionDaily(regionId || '', { start_date: past30Str, end_date: todayStr });
+
   const { data: stationsRes, isLoading: isStationsLoading } = useRegionStations(regionId || '', { summary_date: effectiveDate });
 
   if (!regionId) {
     return (
       <PageContainer title="Region Detail">
-        <ErrorState message="No region ID provided in route path." />
+        <ErrorState
+          title="Invalid Region ID"
+          message="No valid region identifier provided in the URL route path."
+          severity="warning"
+          actionLabel="Back to Regions"
+          onRetry={() => navigate('/regions')}
+        />
       </PageContainer>
     );
   }
 
-  if (isDailyLoading || isStationsLoading) {
+  if (isDailyLoading && isStationsLoading) {
     return (
       <PageContainer title={`Region: ${regionId}`}>
-        <LoadingState message={`Fetching region detail for ${regionId}...`} />
+        <LoadingState title={`Fetching Region ${regionId}`} message="Retrieving regional metrics and daily summary..." />
       </PageContainer>
     );
   }
 
-  if (isDailyError || !dailyRes?.data || dailyRes.data.length === 0) {
+  const parsedError = isDailyError ? parseApiError(dailyError, `No historical daily data found for region '${regionId}'.`) : null;
+
+  if (parsedError && (parsedError.isNetworkError || parsedError.isServerError)) {
     return (
       <PageContainer title={`Region: ${regionId}`}>
-        <ErrorState message={`No daily history found for region ID '${regionId}'.`} onRetry={refetchDaily} />
+        <ErrorState
+          title={parsedError.title}
+          message={parsedError.message}
+          severity={parsedError.severity}
+          technicalDetails={parsedError.technicalDetails}
+          actionLabel="Retry"
+          onRetry={refetchDaily}
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!dailyRes?.data || dailyRes.data.length === 0) {
+    return (
+      <PageContainer title={`Region: ${regionId}`}>
+        <div className="mb-4">
+          <button
+            onClick={() => navigate('/regions')}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Regions
+          </button>
+        </div>
+        <EmptyState
+          title={`No history for region '${regionId}' yet`}
+          message="Station observations for this region are being recorded, but regional aggregations have not been completed yet."
+          actionLabel="Refresh Data"
+          onAction={refetchDaily}
+        />
       </PageContainer>
     );
   }

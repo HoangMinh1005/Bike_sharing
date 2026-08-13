@@ -83,14 +83,39 @@ docker compose up -d frontend
 ```text
 frontend/
 ├── src/
-│   ├── api/          # Axios API clients for health, system, stations, regions, ranking, pipelines
-│   ├── components/   # UI layout, common cards, Recharts chart cards, responsive data tables
+│   ├── api/          # Axios API clients for freshness, health, system, stations, regions, ranking, pipelines
+│   ├── components/   # UI layout, common state cards (EmptyState, ErrorState, PartialDataWarning, DataUnavailableState), chart cards, data tables
 │   ├── hooks/        # TanStack Query custom hooks
 │   ├── pages/        # 7 React dashboard page views
 │   ├── routes/       # React Router DOM route definitions
 │   ├── types/        # TypeScript schemas matching FastAPI backend responses
-│   └── utils/        # Formatters, date helpers, and UI constants
+│   └── utils/        # Error parsing, formatters, date helpers, and UI constants
 ├── Dockerfile        # Multi-stage build (node:20-alpine -> nginx:alpine)
 ├── nginx.conf        # Nginx SPA fallback configuration
 └── vite.config.ts    # Vite bundler configuration
 ```
+
+---
+
+## 7. Dashboard State Hierarchy & Initial Deployment Behavior
+
+### A. "API Online" vs "Data Available"
+- **API Online (`/api/v1/health`)**: Indicates the FastAPI service and connection to PostgreSQL / Redis are active and responsive.
+- **Data Freshness (`/api/v1/freshness/summary`)**: Indicates whether real-time data feeds and marts have actually ingested observations and completed their ETL cycles.
+- *An API can be 100% online while certain analytical tables are still accumulating data.*
+
+### B. State Classification Matrix
+
+| State Type | Trigger Scenario | Visual Appearance | Meaning & Recommended Action |
+| :--- | :--- | :--- | :--- |
+| **API Unavailable** | Network error or API container stopped | Rose Error Card (Severity: `error`) | Check if `fastapi` container is running (`docker compose ps`). |
+| **Backend Query Error** | HTTP 500 server exception | Rose Error Card with collapsible tech details | Check backend logs and PostgreSQL schema integrity. |
+| **Partial Data** | Hourly data exists, but daily summary is pending | Amber Alert Banner (Severity: `warning`) | Hourly metrics are visible; daily aggregations will generate at midnight. |
+| **Data Pending / Not Ready** | Fresh deployment before first ETL cycle | Slate / Amber Info Card (Severity: `info`) | DAGs are actively processing; data will appear upon task completion. |
+| **Empty Search / Filter** | No matching station for user query | Gentle Inbox Empty Card (Severity: `info`) | Adjust search keywords or date range filters. |
+
+### C. Expected Timeline After Initial Server Deployment
+1. **0 - 5 minutes**: `station_status_snapshot_dag` fetches the first GBFS station status batch. Station snapshot metrics become Live.
+2. **1 - 2 hours**: `hourly_mart_build_dag` builds the first hourly mobility records. Hourly charts populate.
+3. **24 hours**: `daily_summary_dag` computes complete 24-hour daily availability and station demand rankings. Daily summary KPIs and ranking tables become fully active.
+
