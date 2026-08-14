@@ -194,6 +194,7 @@ class DagRunFreshness(BaseSchema):
 
 class DataFreshnessSummary(BaseSchema):
     status: Literal["HEALTHY", "WARNING", "STALE", "UNKNOWN"]
+    quality_status: Literal["HEALTHY", "WARNING", "FAILED", "UNKNOWN"] = "HEALTHY"
     checked_at: datetime
     latest_station_status_snapshot_at: Optional[datetime] = None
     station_status_lag_minutes: Optional[float] = None

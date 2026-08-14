@@ -350,23 +350,32 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     daily_status = evaluate_daily_summary_freshness(daily_date, now_utc.date())
     component_statuses.append(daily_status)
 
-    # 4. Pipeline Health Status
+    # 4. Pipeline Health Status (Data Quality & Execution Integrity)
     health_status, health_warn = _safe_fetch_latest_pipeline_health()
     if health_warn:
         warnings.append(health_warn)
-    if health_status:
-        component_statuses.append("WARNING" if health_status in ("WARNING", "FAILED") else health_status)
+    quality_status = health_status or "UNKNOWN"
 
     # 5. Successful DAG Runs List
     dag_runs, dag_warn = _safe_fetch_latest_successful_dag_runs(now_utc)
     if dag_warn:
         warnings.append(dag_warn)
 
-    # Calculate overall freshness status
-    overall_status = calculate_overall_status(component_statuses)
+    # Calculate overall time freshness status (excluding DQ warnings)
+    time_statuses = list(component_statuses)
+    for r in dag_runs:
+        if r.get("status"):
+            time_statuses.append(r["status"])
+
+    overall_freshness_status = calculate_overall_status(time_statuses)
+
+    # If data is fresh in time but pipeline health has non-critical quality warnings, add notice
+    if overall_freshness_status == "HEALTHY" and quality_status == "WARNING":
+        warnings.append("Data is Live and up-to-date; pipeline health reported non-critical Data Quality warnings.")
 
     return {
-        "status": overall_status,
+        "status": overall_freshness_status,
+        "quality_status": quality_status,
         "checked_at": now_utc,
         "latest_station_status_snapshot_at": snapshot_ts,
         "station_status_lag_minutes": round(snapshot_lag_min, 1) if snapshot_lag_min is not None else None,

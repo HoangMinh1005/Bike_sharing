@@ -188,27 +188,33 @@ export const FreshnessCard: React.FC<FreshnessCardProps> = ({ data, isLoading, i
           <p className="text-xs text-slate-500 mt-1">Aggregated Daily Records</p>
         </div>
 
-        {/* 4. Pipeline Health SLA */}
+        {/* 4. Pipeline Health & DQ */}
         <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-purple-600" />
-              Pipeline Health
+              Pipeline Health & DQ
             </span>
             <span
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                data.latest_pipeline_health_status === 'HEALTHY'
+                data.quality_status === 'HEALTHY' || data.latest_pipeline_health_status === 'HEALTHY'
                   ? 'bg-emerald-100 text-emerald-800'
-                  : data.latest_pipeline_health_status === 'WARNING'
+                  : data.quality_status === 'WARNING' || data.latest_pipeline_health_status === 'WARNING'
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-rose-100 text-rose-800'
               }`}
             >
-              {data.latest_pipeline_health_status || 'UNKNOWN'}
+              {data.quality_status === 'WARNING'
+                ? 'DQ WARNING'
+                : data.latest_pipeline_health_status || data.quality_status || 'UNKNOWN'}
             </span>
           </div>
-          <p className="text-sm font-bold text-slate-800">{data.latest_pipeline_health_status || 'Checking...'}</p>
-          <p className="text-xs text-slate-500 mt-1">Overall SLA & Data Quality</p>
+          <p className="text-sm font-bold text-slate-800">
+            {data.latest_pipeline_health_status === 'WARNING'
+              ? 'Active with DQ Notices'
+              : data.latest_pipeline_health_status || 'Checking...'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">SLA Freshness & Data Quality</p>
         </div>
       </div>
 

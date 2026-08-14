@@ -9,6 +9,7 @@ export interface DagRunFreshness {
 
 export interface DataFreshnessSummary {
   status: FreshnessStatus;
+  quality_status?: 'HEALTHY' | 'WARNING' | 'FAILED' | 'UNKNOWN';
   checked_at: string;
   latest_station_status_snapshot_at: string | null;
   station_status_lag_minutes: number | null;
