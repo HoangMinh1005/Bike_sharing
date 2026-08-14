@@ -1,5 +1,5 @@
 import pendulum
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.common.db import fetch_all, fetch_one
@@ -104,6 +104,15 @@ def calculate_overall_status(statuses: List[str]) -> str:
     return "UNKNOWN"
 
 
+def _ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Ensure a datetime object has explicit UTC tzinfo."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional[str]]:
     """
     Fetch the latest station status snapshot timestamp.
@@ -118,7 +127,7 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
             """
         )
         if row and row.get("latest_ts"):
-            return row["latest_ts"], None
+            return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
         logger.debug(f"Query on staging.station_status failed: {e}")
 
@@ -131,7 +140,7 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
             """
         )
         if row and row.get("latest_ts"):
-            return row["latest_ts"], None
+            return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
         logger.debug(f"Query on raw.station_status_snapshots failed: {e}")
 
@@ -147,7 +156,7 @@ def _safe_fetch_hourly_mart_timestamp() -> Tuple[Optional[datetime], Optional[st
     try:
         row = fetch_one("SELECT MAX(hour_bucket) AS latest_ts FROM mart.hourly_station_availability")
         if row and row.get("latest_ts"):
-            return row["latest_ts"], None
+            return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
         logger.debug(f"Query on mart.hourly_station_availability failed: {e}")
 
@@ -155,7 +164,7 @@ def _safe_fetch_hourly_mart_timestamp() -> Tuple[Optional[datetime], Optional[st
     try:
         row = fetch_one("SELECT MAX(hour_bucket) AS latest_ts FROM mart.weather_mobility_summary")
         if row and row.get("latest_ts"):
-            return row["latest_ts"], None
+            return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
         logger.debug(f"Query on mart.weather_mobility_summary failed: {e}")
 
@@ -235,7 +244,7 @@ def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict
         )
         for r in rows:
             if r.get("dag_id") and r.get("latest_success_at"):
-                dag_runs_map[r["dag_id"]] = r["latest_success_at"]
+                dag_runs_map[r["dag_id"]] = _ensure_utc(r["latest_success_at"])
     except Exception as e:
         logger.debug(f"Query on etl_metadata.pipeline_runs failed: {e}")
 
@@ -256,7 +265,7 @@ def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict
             )
             for r in rows:
                 if r.get("dag_id") and r.get("latest_success_finished_at"):
-                    dag_runs_map[r["dag_id"]] = r["latest_success_finished_at"]
+                    dag_runs_map[r["dag_id"]] = _ensure_utc(r["latest_success_finished_at"])
         except Exception as e:
             logger.debug(f"Fallback query on pipeline_health_summary failed: {e}")
 

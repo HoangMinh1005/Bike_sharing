@@ -18,10 +18,20 @@ export function formatPercent(value: number | null | undefined, decimals: number
   return `${percent.toFixed(decimals)}%`;
 }
 
+function parseToUtcDate(value: string | Date): Date {
+  if (value instanceof Date) return value;
+  const str = String(value).trim();
+  // If string is an ISO format without timezone offset (e.g. 2026-08-14T09:00:04), append 'Z' so it is parsed as UTC
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(str)) {
+    return new Date(str.replace(' ', 'T') + 'Z');
+  }
+  return new Date(str);
+}
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return '-';
   try {
-    const d = typeof value === 'string' ? new Date(value) : value;
+    const d = parseToUtcDate(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toISOString().split('T')[0];
   } catch {
@@ -32,7 +42,7 @@ export function formatDate(value: string | Date | null | undefined): string {
 export function formatDateTime(value: string | Date | null | undefined): string {
   if (!value) return '-';
   try {
-    const d = typeof value === 'string' ? new Date(value) : value;
+    const d = parseToUtcDate(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toISOString().replace('T', ' ').substring(0, 19);
   } catch {
