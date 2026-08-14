@@ -17,7 +17,7 @@ import { formatDate, formatNumber, formatPercent } from '../utils/format';
 import { getPastDateString } from '../utils/date';
 import { parseApiError } from '../utils/error';
 import { SystemDailySummary } from '../types/system';
-import { Bike, Layers, MapPin, Activity, Thermometer, Sun } from 'lucide-react';
+import { Bike, Layers, MapPin, Activity, Thermometer, Sun, Flame } from 'lucide-react';
 
 export const SystemOverviewPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -267,7 +267,7 @@ export const SystemOverviewPage: React.FC = () => {
           title="Hourly High-Demand Stations"
           value={formatNumber(activeSummary.high_demand_station_count)}
           subtitle={`Experienced shortage in 1+ hours (${formatNumber(activeSummary.empty_station_count)} empty)`}
-          status={activeSummary.high_demand_station_count && activeSummary.high_demand_station_count > 50 ? 'WARNING' : 'HEALTHY'}
+          icon={Flame}
         />
         <KpiCard
           title="Avg Temperature"

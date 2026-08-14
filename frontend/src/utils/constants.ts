@@ -20,6 +20,7 @@ export const DEMAND_CATEGORY_COLORS: Record<string, { bg: string; text: string; 
   HIGH: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
   MEDIUM: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
   LOW: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  BALANCED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
 };
 
 export const DEFAULT_PAGE_SIZE = 50;

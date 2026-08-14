@@ -122,21 +122,24 @@ export const DemandRankingPage: React.FC = () => {
           value={formatNumber(highCount)}
           subtitle="Top urgency rebalancing target"
           icon={Flame}
-          status="FAILED"
+          status="HIGH"
+          badgeType="demand"
         />
         <KpiCard
           title="Medium Demand Stations"
           value={formatNumber(mediumCount)}
           subtitle="Moderate shortage frequency"
           icon={AlertCircle}
-          status="WARNING"
+          status="MEDIUM"
+          badgeType="demand"
         />
         <KpiCard
           title="Low Demand / Balanced"
           value={formatNumber(lowCount)}
           subtitle="Adequate inventory balance"
           icon={Award}
-          status="HEALTHY"
+          status="BALANCED"
+          badgeType="demand"
         />
       </div>
 
