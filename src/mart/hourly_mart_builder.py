@@ -149,8 +149,8 @@ def build_hourly_station_availability(
                 sa.hour_bucket,
                 sa.station_id,
                 s.station_name,
-                s.region_id,
-                r.region_name,
+                COALESCE(s.region_id, 'UNKNOWN') AS region_id,
+                COALESCE(r.region_name, 'Unknown Region') AS region_name,
                 s.latitude,
                 s.longitude,
 
@@ -405,7 +405,7 @@ def build_hourly_region_availability(
         SELECT
             hsa.hour_bucket,
             COALESCE(hsa.region_id, 'UNKNOWN') AS region_id,
-            MAX(hsa.region_name) AS region_name,
+            COALESCE(MAX(hsa.region_name), 'Unknown Region') AS region_name,
             COUNT(DISTINCT hsa.station_id) AS station_count,
 
             COUNT(

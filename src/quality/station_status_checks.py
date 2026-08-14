@@ -427,7 +427,7 @@ def run_station_status_dq_checks(run_id: str, batch_id: str) -> None:
                 WHERE ss.batch_id = :batch_id
                   AND s.station_id IS NULL
             """,
-            "severity": "WARNING",
+            "severity": "CRITICAL",
             "msg_template": (
                 "Batch {batch_id}: Found {count} station_status record(s) "
                 "that do not map to stations metadata."

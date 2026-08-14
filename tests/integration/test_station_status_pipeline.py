@@ -208,6 +208,17 @@ def test_station_status_dq_checks_success_and_failure(clean_test_batches):
         }
     }
 
+    # Ensure station metadata exists for station_xyz
+    from src.common.db import execute_sql
+    execute_sql(
+        """
+        INSERT INTO staging.stations (station_id, station_name, source_batch_id)
+        VALUES ('station_xyz', 'Station XYZ', :batch_id)
+        ON CONFLICT (station_id) DO NOTHING
+        """,
+        {"batch_id": batch_id}
+    )
+
     # Extract/Load and Transform
     load_station_status_raw(mock_payload, batch_id, batch_id)
     transform_station_status(batch_id)

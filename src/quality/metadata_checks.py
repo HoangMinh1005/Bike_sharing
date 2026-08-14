@@ -401,21 +401,6 @@ def run_metadata_dq_checks(run_id: str, batch_id: str) -> None:
                 "with negative capacity."
             ),
         },
-        {
-            "table": "staging.stations",
-            "name": "stations_region_id_missing",
-            "sql": """
-                SELECT COUNT(*) AS failed_count
-                FROM staging.stations
-                WHERE source_batch_id = :batch_id
-                  AND region_id IS NULL
-            """,
-            "severity": "WARNING",
-            "msg_template": (
-                "Batch {batch_id}: Found {count} station record(s) "
-                "with NULL region_id."
-            ),
-        },
     ]
 
     critical_failures = []
@@ -488,6 +473,77 @@ def run_metadata_dq_checks(run_id: str, batch_id: str) -> None:
                 critical_failures.append(
                     f"{check['name']} execution error: {e}"
                 )
+
+    # Threshold-based Check: stations_region_mapping
+    try:
+        stats = fetch_one(
+            """
+            SELECT 
+                COUNT(*) AS total_count,
+                COUNT(*) FILTER (
+                    WHERE region_id IS NULL 
+                       OR region_id = 'UNKNOWN' 
+                       OR region_id NOT IN (SELECT region_id FROM staging.regions WHERE region_id != 'UNKNOWN')
+                ) AS unmapped_count
+            FROM staging.stations
+            WHERE source_batch_id = :batch_id
+            """,
+            {"batch_id": batch_id},
+        )
+        total_count = int(stats["total_count"] or 0) if stats else 0
+        unmapped_count = int(stats["unmapped_count"] or 0) if stats else 0
+        rate = (unmapped_count / total_count) if total_count > 0 else 0.0
+
+        if rate <= 0.01:
+            # <= 1%: Accepted / Info (Non-blocking)
+            status = "passed"
+            severity = "INFO"
+            message = (
+                f"Batch {batch_id}: {unmapped_count}/{total_count} station(s) "
+                f"({rate * 100:.2f}%) have missing/unmapped region_id and are assigned to UNKNOWN_REGION "
+                f"(within accepted <= 1.0% threshold)."
+            )
+            logger.info(f"DQ Check PASSED (INFO): stations_region_mapping on staging.stations - {message}")
+        elif rate <= 0.05:
+            # 1% to 5%: Warning
+            status = "warning"
+            severity = "WARNING"
+            message = (
+                f"Batch {batch_id}: {unmapped_count}/{total_count} station(s) "
+                f"({rate * 100:.2f}%) have missing/unmapped region_id, exceeding 1.0% warning threshold."
+            )
+            logger.warning(f"DQ Check WARNING: stations_region_mapping on staging.stations - {message}")
+        else:
+            # > 5%: Critical failure
+            status = "failed"
+            severity = "CRITICAL"
+            message = (
+                f"Batch {batch_id}: {unmapped_count}/{total_count} station(s) "
+                f"({rate * 100:.2f}%) have missing/unmapped region_id, exceeding critical 5.0% threshold."
+            )
+            logger.error(f"DQ Check FAILED: stations_region_mapping on staging.stations - {message}")
+            critical_failures.append(f"stations_region_mapping: {message}")
+
+        write_dq_result(
+            run_id=run_id,
+            table_name="staging.stations",
+            check_name="stations_region_mapping",
+            status=status,
+            failed_count=unmapped_count,
+            severity=severity,
+            message=message,
+        )
+    except Exception as e:
+        logger.error(f"Error executing DQ check 'stations_region_mapping': {e}")
+        write_dq_result(
+            run_id=run_id,
+            table_name="staging.stations",
+            check_name="stations_region_mapping",
+            status="failed",
+            failed_count=1,
+            severity="WARNING",
+            message=f"Batch {batch_id}: Execution error: {e}",
+        )
 
     if critical_failures:
         error_message = "; ".join(critical_failures)

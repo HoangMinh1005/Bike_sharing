@@ -192,6 +192,16 @@ def transform_regions(batch_id: str) -> int:
             loaded_at = EXCLUDED.loaded_at
     """
 
+    # Always ensure standard fallback UNKNOWN region exists
+    execute_sql(
+        sql,
+        {
+            "region_id": "UNKNOWN",
+            "region_name": "Unknown Region",
+            "source_batch_id": batch_id,
+        },
+    )
+
     processed = 0
     skipped = 0
 
@@ -405,15 +415,15 @@ def transform_stations(batch_id: str) -> int:
 
         if not region_id:
             missing_region_count += 1
-            region_id = None
+            region_id = "UNKNOWN"
 
         elif region_id not in existing_region_ids:
-            logger.warning(
-                f"Station '{station_id}' has unknown region_id='{region_id}' "
-                f"for batch '{batch_id}'. Setting region_id to NULL."
+            logger.debug(
+                f"Station '{station_id}' has unmapped region_id='{region_id}' "
+                f"for batch '{batch_id}'. Assigning to UNKNOWN region."
             )
             unknown_region_count += 1
-            region_id = None
+            region_id = "UNKNOWN"
 
         params = {
             "station_id": station_id,

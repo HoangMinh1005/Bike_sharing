@@ -391,18 +391,18 @@ def build_pipeline_health_summary(
                 """
                 SELECT
                     COUNT(*) AS dq_total_checks,
-                    COUNT(CASE WHEN status = 'failed' THEN 1 END) AS dq_failed_checks,
+                    COUNT(CASE WHEN status IN ('failed', 'warning') THEN 1 END) AS dq_failed_checks,
                     COUNT(
                         CASE
-                            WHEN status = 'failed'
-                             AND severity = 'WARNING'
+                            WHEN status = 'warning'
+                              OR (status = 'failed' AND severity = 'WARNING')
                             THEN 1
                         END
                     ) AS dq_warning_checks,
                     COUNT(
                         CASE
                             WHEN status = 'failed'
-                             AND severity = 'CRITICAL'
+                              AND severity = 'CRITICAL'
                             THEN 1
                         END
                     ) AS dq_critical_failed_checks

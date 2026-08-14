@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS staging.regions (
     loaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO staging.regions (region_id, region_name)
+VALUES ('UNKNOWN', 'Unknown Region')
+ON CONFLICT (region_id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS staging.vehicle_types (
     vehicle_type_id VARCHAR(100) PRIMARY KEY,
     form_factor TEXT,

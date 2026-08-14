@@ -13,7 +13,7 @@ import { useLatestPipelineHealth, useLatestPipelineRuns } from '../hooks/usePipe
 import { formatDateTime, formatDurationMinutes, formatNumber } from '../utils/format';
 import { parseApiError } from '../utils/error';
 import { PipelineHealth, PipelineRun } from '../types/pipeline';
-import { Activity, ShieldCheck, AlertTriangle, XCircle, Clock } from 'lucide-react';
+import { Activity, ShieldCheck, AlertTriangle, XCircle, Clock, Info } from 'lucide-react';
 
 export const PipelineHealthPage: React.FC = () => {
   const {
@@ -189,6 +189,24 @@ export const PipelineHealthPage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Data Quality Notes & Known Limitations */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-8">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-sky-600 mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Data Quality Notes & Known Data Limitations
+            </h4>
+            <p className="text-xs text-slate-600">
+              • <strong>Station Region Mapping</strong>: Some GBFS feeds omit optional <code className="text-[11px] bg-white px-1 py-0.5 rounded border border-slate-200">region_id</code> fields. Stations with missing or unmapped region IDs are automatically grouped under <strong>Unknown Region</strong> (<code className="text-[11px] bg-white px-1 py-0.5 rounded border border-slate-200">region_id = 'UNKNOWN'</code>).
+            </p>
+            <p className="text-xs text-slate-600">
+              • <strong>Operational Threshold</strong>: Missing region rates under <strong>&le; 1.0%</strong> are marked as accepted non-blocking limitations and do not impact Overall Pipeline Health.
+            </p>
+          </div>
         </div>
       </div>
 

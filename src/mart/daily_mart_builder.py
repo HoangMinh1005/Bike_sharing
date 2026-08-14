@@ -101,8 +101,8 @@ def build_daily_station_summary(
             CAST(:target_date AS DATE) AS summary_date,
             hsa.station_id,
             MAX(hsa.station_name) AS station_name,
-            MAX(hsa.region_id) AS region_id,
-            MAX(hsa.region_name) AS region_name,
+            COALESCE(MAX(hsa.region_id), 'UNKNOWN') AS region_id,
+            COALESCE(MAX(hsa.region_name), 'Unknown Region') AS region_name,
             MAX(hsa.latitude) AS latitude,
             MAX(hsa.longitude) AS longitude,
             MAX(hsa.capacity) AS capacity,
@@ -277,7 +277,7 @@ def build_daily_region_summary(
         SELECT
             dss.summary_date,
             COALESCE(dss.region_id, 'UNKNOWN') AS region_id,
-            MAX(dss.region_name) AS region_name,
+            COALESCE(MAX(dss.region_name), 'Unknown Region') AS region_name,
 
             COUNT(DISTINCT dss.station_id) AS station_count,
             COUNT(
