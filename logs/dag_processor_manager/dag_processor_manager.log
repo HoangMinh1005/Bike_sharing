@@ -100665,3 +100665,262 @@ File Path                                         PID    Runtime      # DAGs    
 /opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:15:08
 /opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.10s           2026-08-14T08:15:21
 ================================================================================
+[2026-08-14T08:15:41.412+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:15:41.414+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:15:57.652+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:15:39
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.09s           2026-08-14T08:15:39
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:15:48
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.09s           2026-08-14T08:15:39
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.10s           2026-08-14T08:15:51
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.09s           2026-08-14T08:15:48
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:15:39
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.10s           2026-08-14T08:15:51
+================================================================================
+[2026-08-14T08:16:11.811+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:16:11.812+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:16:30.021+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:16:09
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:16:09
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:16:18
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:16:09
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:16:22
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:16:18
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:16:09
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.09s           2026-08-14T08:16:21
+================================================================================
+[2026-08-14T08:16:42.012+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:16:42.014+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:17:02.421+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.08s           2026-08-14T08:16:42
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:16:42
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:16:49
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:16:42
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.09s           2026-08-14T08:16:52
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:16:49
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:16:42
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.09s           2026-08-14T08:16:52
+================================================================================
+[2026-08-14T08:17:12.265+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:17:12.266+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:17:34.844+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  1.24s           2026-08-14T08:17:13
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:17:13
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:17:19
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:17:13
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.10s           2026-08-14T08:17:22
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:17:19
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  1.24s           2026-08-14T08:17:13
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.10s           2026-08-14T08:17:22
+================================================================================
+[2026-08-14T08:17:42.867+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:17:42.869+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:18:07.188+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.11s           2026-08-14T08:17:45
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.10s           2026-08-14T08:17:45
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:17:50
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.09s           2026-08-14T08:17:46
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.10s           2026-08-14T08:17:53
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.09s           2026-08-14T08:17:50
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.11s           2026-08-14T08:17:45
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.10s           2026-08-14T08:17:53
+================================================================================
+[2026-08-14T08:18:13.207+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:18:13.209+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:18:39.570+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:18:17
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:18:17
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:18:20
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:18:17
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:18:23
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:18:20
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:18:17
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.08s           2026-08-14T08:18:23
+================================================================================
+[2026-08-14T08:18:43.584+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:18:43.585+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:19:12.064+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.10s           2026-08-14T08:18:49
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.10s           2026-08-14T08:18:49
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:18:50
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.10s           2026-08-14T08:18:49
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:18:54
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:18:50
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.10s           2026-08-14T08:18:49
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.08s           2026-08-14T08:18:54
+================================================================================
+[2026-08-14T08:19:14.070+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:19:14.072+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:19:44.411+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:19:44.413+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:19:44.418+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:19:19
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  1.19s           2026-08-14T08:19:21
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:19:21
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  1.19s           2026-08-14T08:19:21
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.09s           2026-08-14T08:19:24
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:19:21
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:19:19
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.09s           2026-08-14T08:19:24
+================================================================================
+[2026-08-14T08:20:15.069+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:20:15.071+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:20:17.083+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.10s           2026-08-14T08:19:50
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.10s           2026-08-14T08:19:53
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.11s           2026-08-14T08:19:53
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.10s           2026-08-14T08:19:53
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.30s           2026-08-14T08:19:55
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.13s           2026-08-14T08:19:53
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.10s           2026-08-14T08:19:50
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.32s           2026-08-14T08:19:55
+================================================================================
+[2026-08-14T08:20:45.532+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:20:45.534+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:20:49.555+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:20:21
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.10s           2026-08-14T08:20:25
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:20:25
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.09s           2026-08-14T08:20:25
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.09s           2026-08-14T08:20:25
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.09s           2026-08-14T08:20:25
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:20:21
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.09s           2026-08-14T08:20:25
+================================================================================
+[2026-08-14T08:21:15.913+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:21:15.915+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:21:21.953+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                           PID  Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py         6877  0.00s             1           0  0.09s           2026-08-14T08:20:51
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.09s           2026-08-14T08:20:57
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:20:57
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:20:57
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.09s           2026-08-14T08:20:57
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.08s           2026-08-14T08:20:57
+/opt/airflow/dags/daily_summary_dag.py             6874  0.01s             1           0  0.09s           2026-08-14T08:20:51
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.08s           2026-08-14T08:20:57
+================================================================================
+[2026-08-14T08:21:46.302+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:21:46.303+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:21:54.420+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.08s           2026-08-14T08:21:52
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:21:29
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:21:29
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:21:29
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:21:29
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.10s           2026-08-14T08:21:29
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.08s           2026-08-14T08:21:52
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.08s           2026-08-14T08:21:29
+================================================================================
+[2026-08-14T08:22:16.651+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:22:16.653+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:22:26.779+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:22:22
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:22:01
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.07s           2026-08-14T08:22:01
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:22:01
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:22:01
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.09s           2026-08-14T08:22:01
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:22:22
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.08s           2026-08-14T08:22:01
+================================================================================
+[2026-08-14T08:22:47.036+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:22:47.037+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:22:59.171+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:22:53
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.08s           2026-08-14T08:22:32
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  1.22s           2026-08-14T08:22:32
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:22:33
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.08s           2026-08-14T08:22:32
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  1.24s           2026-08-14T08:22:32
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:22:53
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.09s           2026-08-14T08:22:32
+================================================================================
+[2026-08-14T08:23:17.861+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:23:17.862+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
+[2026-08-14T08:23:31.999+0000] {manager.py:887} INFO - 
+================================================================================
+DAG File Processing Stats
+
+File Path                                         PID    Runtime      # DAGs    # Errors  Last Runtime    Last Run
+------------------------------------------------  -----  ---------  --------  ----------  --------------  -------------------
+/opt/airflow/dags/hourly_mart_build_dag.py                                 1           0  0.09s           2026-08-14T08:23:23
+/opt/airflow/dags/station_status_snapshot_dag.py                           1           0  0.22s           2026-08-14T08:23:05
+/opt/airflow/dags/backfill_mart_dag.py                                     1           0  0.08s           2026-08-14T08:23:05
+/opt/airflow/dags/gbfs_metadata_daily_dag.py                               1           0  0.08s           2026-08-14T08:23:05
+/opt/airflow/dags/weather_calendar_sync_dag.py                             1           0  0.11s           2026-08-14T08:23:05
+/opt/airflow/dags/retention_cleanup_dag.py                                 1           0  0.36s           2026-08-14T08:23:05
+/opt/airflow/dags/daily_summary_dag.py                                     1           0  0.09s           2026-08-14T08:23:23
+/opt/airflow/dags/pipeline_health_dag.py                                   1           0  0.38s           2026-08-14T08:23:05
+================================================================================
+[2026-08-14T08:23:48.247+0000] {manager.py:755} INFO - Searching for files in /opt/airflow/dags
+[2026-08-14T08:23:48.248+0000] {manager.py:758} INFO - There are 8 files in /opt/airflow/dags
