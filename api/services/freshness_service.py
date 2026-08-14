@@ -18,8 +18,8 @@ STATUS_ORDER = {
 STATION_STATUS_HEALTHY_MAX_MINUTES = 30.0
 STATION_STATUS_WARNING_MAX_MINUTES = 60.0
 
-HOURLY_MART_HEALTHY_MAX_MINUTES = 150.0  # 2.5 hours (accounts for hourly closed-window + 20min DAG schedule offset)
-HOURLY_MART_WARNING_MAX_MINUTES = 270.0  # 4.5 hours
+HOURLY_MART_HEALTHY_MAX_MINUTES = 90.0   # 1.5 hours (max normal lag cycle is 80m before :20 run)
+HOURLY_MART_WARNING_MAX_MINUTES = 180.0  # 3.0 hours
 
 DAILY_SUMMARY_HEALTHY_MAX_DAYS = 1  # Today or yesterday
 DAILY_SUMMARY_WARNING_MAX_DAYS = 2  # 2 days ago
@@ -333,10 +333,14 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     
     hourly_lag_min: Optional[float] = None
     if hourly_ts:
-        if hasattr(hourly_ts, "tzinfo") and hourly_ts.tzinfo is not None:
-            hourly_lag_min = max(0.0, (now_utc - hourly_ts).total_seconds() / 60.0)
+        # hour_bucket represents the start of the 1-hour window (e.g. 23:00 covers up to 00:00).
+        # Data coverage extends to the end of the window (hour_bucket + 1 hour).
+        from datetime import timedelta
+        hourly_coverage_end = hourly_ts + timedelta(hours=1)
+        if hasattr(hourly_coverage_end, "tzinfo") and hourly_coverage_end.tzinfo is not None:
+            hourly_lag_min = max(0.0, (now_utc - hourly_coverage_end).total_seconds() / 60.0)
         else:
-            hourly_lag_min = max(0.0, (now_utc.replace(tzinfo=None) - hourly_ts).total_seconds() / 60.0)
+            hourly_lag_min = max(0.0, (now_utc.replace(tzinfo=None) - hourly_coverage_end).total_seconds() / 60.0)
         hourly_status = evaluate_hourly_mart_freshness(hourly_lag_min)
     else:
         hourly_status = "UNKNOWN"

@@ -28,19 +28,19 @@ def test_station_status_freshness_thresholds():
 
 
 def test_hourly_mart_freshness_thresholds():
-    # Healthy: <= 150 minutes (2.5 hours)
+    # Healthy: <= 90 minutes (1.5 hours)
     assert evaluate_hourly_mart_freshness(0.0) == "HEALTHY"
-    assert evaluate_hourly_mart_freshness(60.0) == "HEALTHY"
-    assert evaluate_hourly_mart_freshness(120.0) == "HEALTHY"
-    assert evaluate_hourly_mart_freshness(150.0) == "HEALTHY"
+    assert evaluate_hourly_mart_freshness(45.0) == "HEALTHY"
+    assert evaluate_hourly_mart_freshness(80.0) == "HEALTHY"
+    assert evaluate_hourly_mart_freshness(90.0) == "HEALTHY"
 
-    # Warning: 150 to 270 minutes (2.5 to 4.5 hours)
-    assert evaluate_hourly_mart_freshness(150.1) == "WARNING"
-    assert evaluate_hourly_mart_freshness(200.0) == "WARNING"
-    assert evaluate_hourly_mart_freshness(270.0) == "WARNING"
+    # Warning: 90 to 180 minutes (1.5 to 3.0 hours)
+    assert evaluate_hourly_mart_freshness(90.1) == "WARNING"
+    assert evaluate_hourly_mart_freshness(120.0) == "WARNING"
+    assert evaluate_hourly_mart_freshness(180.0) == "WARNING"
 
-    # Stale: > 270 minutes
-    assert evaluate_hourly_mart_freshness(270.1) == "STALE"
+    # Stale: > 180 minutes
+    assert evaluate_hourly_mart_freshness(180.1) == "STALE"
     assert evaluate_hourly_mart_freshness(500.0) == "STALE"
 
     # Unknown: None

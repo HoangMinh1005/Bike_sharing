@@ -153,16 +153,16 @@ export const FreshnessCard: React.FC<FreshnessCardProps> = ({ data, isLoading, i
             </span>
             <span
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 150
+                data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 90
                   ? 'bg-emerald-100 text-emerald-800'
-                  : data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 270
+                  : data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 180
                   ? 'bg-amber-100 text-amber-800'
                   : 'bg-rose-100 text-rose-800'
               }`}
             >
-              {data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 150
+              {data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 90
                 ? 'UP-TO-DATE'
-                : data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 270
+                : data.hourly_mart_lag_minutes !== null && data.hourly_mart_lag_minutes <= 180
                 ? 'LAG'
                 : 'STALE'}
             </span>
