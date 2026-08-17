@@ -100,10 +100,13 @@ export const RegionDetailPage: React.FC = () => {
   }
 
   const dailyHistory = dailyRes.data;
-  const latestSummary = dailyHistory[0];
+  const sortedHistoryAsc = [...dailyHistory].sort(
+    (a, b) => new Date(a.summary_date).getTime() - new Date(b.summary_date).getTime()
+  );
+  const latestSummary = sortedHistoryAsc[sortedHistoryAsc.length - 1];
   const regionStations = stationsRes?.data || [];
 
-  const dailyTrendData = [...dailyHistory].reverse().map((d) => ({
+  const dailyTrendData = sortedHistoryAsc.map((d) => ({
     date: formatDate(d.summary_date),
     availabilityRate: d.avg_availability_rate ? d.avg_availability_rate * 100 : 0,
     dockUtilization: d.avg_dock_utilization_rate ? d.avg_dock_utilization_rate * 100 : 0,

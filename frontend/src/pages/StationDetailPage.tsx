@@ -96,7 +96,10 @@ export const StationDetailPage: React.FC = () => {
   }
 
   const dailyHistory = dailyRes.data;
-  const latestSummary = dailyHistory[0];
+  const sortedHistoryAsc = [...dailyHistory].sort(
+    (a, b) => new Date(a.summary_date).getTime() - new Date(b.summary_date).getTime()
+  );
+  const latestSummary = sortedHistoryAsc[sortedHistoryAsc.length - 1];
   const hourlyData = hourlyRes?.data || [];
 
   // Chart data formatting
@@ -108,11 +111,12 @@ export const StationDetailPage: React.FC = () => {
     docksAvailable: h.avg_docks_available || 0,
   }));
 
-  const dailyTrendData = [...dailyHistory].reverse().map((d) => ({
+  const dailyTrendData = sortedHistoryAsc.map((d) => ({
     date: formatDate(d.summary_date),
     availabilityRate: d.avg_availability_rate ? d.avg_availability_rate * 100 : 0,
     dockUtilization: d.avg_dock_utilization_rate ? d.avg_dock_utilization_rate * 100 : 0,
   }));
+  const tableDataDesc = [...sortedHistoryAsc].reverse();
 
   const dailyColumns: Column<StationDailySummary>[] = [
     { key: 'summary_date', header: 'Date', render: (r) => formatDate(r.summary_date) },
@@ -217,7 +221,7 @@ export const StationDetailPage: React.FC = () => {
         <SectionTitle title="Daily Performance History" subtitle="Historical daily records for station" />
         <DataTable
           columns={dailyColumns}
-          data={dailyHistory}
+          data={tableDataDesc}
           keyExtractor={(row) => row.summary_date}
         />
       </div>
