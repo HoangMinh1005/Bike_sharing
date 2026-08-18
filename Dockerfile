@@ -36,6 +36,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY api /app/api
 COPY src /app/src
 COPY sql /app/sql
+COPY scripts /app/scripts
 
 EXPOSE 8000
 
