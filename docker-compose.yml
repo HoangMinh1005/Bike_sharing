@@ -12,6 +12,12 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOGGING_LEVEL: INFO
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 30
     PYTHONPATH: /opt/airflow
+    ALERT_WEBHOOK_ENABLED: "${ALERT_WEBHOOK_ENABLED:-false}"
+    ALERT_WEBHOOK_PROVIDER: "${ALERT_WEBHOOK_PROVIDER:-telegram}"
+    TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+    TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+    ALERT_DEDUP_WINDOW_MINUTES: "${ALERT_DEDUP_WINDOW_MINUTES:-60}"
+    ALERT_REQUEST_TIMEOUT_SECONDS: "${ALERT_REQUEST_TIMEOUT_SECONDS:-10}"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -103,11 +109,18 @@ services:
       DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-bike_sharing}
       REDIS_URL: redis://redis:6379/0
       ENV: development
+      ALERT_WEBHOOK_ENABLED: "${ALERT_WEBHOOK_ENABLED:-false}"
+      ALERT_WEBHOOK_PROVIDER: "${ALERT_WEBHOOK_PROVIDER:-telegram}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+      ALERT_DEDUP_WINDOW_MINUTES: "${ALERT_DEDUP_WINDOW_MINUTES:-60}"
+      ALERT_REQUEST_TIMEOUT_SECONDS: "${ALERT_REQUEST_TIMEOUT_SECONDS:-10}"
     volumes:
       - ./api:/app/api
       - ./src:/app/src
       - ./sql:/app/sql
       - ./tests:/app/tests
+      - ./scripts:/app/scripts
     restart: always
     depends_on:
       postgres:

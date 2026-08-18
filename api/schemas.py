@@ -204,3 +204,30 @@ class DataFreshnessSummary(BaseSchema):
     latest_pipeline_health_status: Optional[str] = None
     latest_successful_dag_runs: list[DagRunFreshness] = []
     warnings: list[str] = []
+
+
+class AlertEvent(BaseSchema):
+    alert_id: str
+    created_at: datetime
+    alert_type: str
+    severity: Literal["INFO", "WARNING", "ERROR", "CRITICAL"]
+    source: str
+    dag_id: Optional[str] = None
+    task_id: Optional[str] = None
+    run_id: Optional[str] = None
+    status: Literal["OPEN", "SENT", "FAILED_TO_SEND", "RESOLVED", "SKIPPED"]
+    title: str
+    message: str
+    details: Optional[dict] = None
+    notification_channel: Optional[str] = None
+    notification_status: Optional[str] = None
+    notification_error: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+
+
+class AlertStats(BaseSchema):
+    total_active: int = 0
+    critical_count: int = 0
+    error_count: int = 0
+    warning_count: int = 0
+    info_count: int = 0

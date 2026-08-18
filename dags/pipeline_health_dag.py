@@ -2,6 +2,7 @@ import pendulum
 
 from airflow.decorators import dag, task
 from src.common.logger import get_logger
+from src.alerts.airflow_callbacks import airflow_task_failure_callback
 
 logger = get_logger(__name__)
 
@@ -12,12 +13,14 @@ default_args = {
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 0,
+    "on_failure_callback": airflow_task_failure_callback,
 }
 
 
 @dag(
     dag_id="pipeline_health_dag",
     default_args=default_args,
+    on_failure_callback=airflow_task_failure_callback,
     description="ETL Pipeline Health & DQ Monitoring DAG",
     schedule="50 * * * *",
     start_date=pendulum.datetime(2026, 7, 1, tz="UTC"),
@@ -242,9 +245,63 @@ def pipeline_health_dag():
             raise
 
     @task
+    def emit_pipeline_health_alerts(batch_info: dict) -> dict:
+        """
+        6. Emit alerts for any monitored DAGs in FAILED or STALE status.
+        Uses deduplication to avoid notification storms.
+        """
+        from src.alerts.notifier import notify_alert
+        from src.alerts.alert_models import AlertPayload, AlertSeverity, AlertType
+        from src.common.db import fetch_all
+
+        run_id = batch_info["run_id"]
+        try:
+            unhealthy_rows = fetch_all(
+                """
+                SELECT monitored_dag_id, health_status, health_message, freshness_lag_minutes, freshness_threshold_minutes
+                FROM etl_metadata.pipeline_health_summary
+                WHERE health_run_id = :run_id
+                  AND health_status IN ('FAILED', 'STALE')
+                """,
+                {"run_id": run_id},
+            )
+
+            for row in unhealthy_rows:
+                dag_id = row["monitored_dag_id"]
+                health_status = row["health_status"]
+                health_message = row.get("health_message") or f"Pipeline {dag_id} is {health_status}"
+
+                severity = AlertSeverity.ERROR if health_status == "FAILED" else AlertSeverity.WARNING
+                alert_type = AlertType.PIPELINE_DAG_FAILED if health_status == "FAILED" else AlertType.PIPELINE_DAG_STALE
+
+                title = f"Pipeline Health Alert: {dag_id} is {health_status}"
+                message = f"Monitored pipeline '{dag_id}' status is {health_status}. {health_message}"
+
+                payload = AlertPayload(
+                    alert_type=alert_type,
+                    severity=severity,
+                    source="pipeline_health",
+                    title=title,
+                    message=message,
+                    dag_id=dag_id,
+                    run_id=run_id,
+                    details={
+                        "health_status": health_status,
+                        "health_message": health_message,
+                        "freshness_lag_minutes": row.get("freshness_lag_minutes"),
+                        "freshness_threshold_minutes": row.get("freshness_threshold_minutes"),
+                    },
+                )
+                notify_alert(payload, check_dedup=True)
+        except Exception as e:
+            logger.warning(f"Error checking and emitting pipeline health alerts (non-blocking): {e}")
+
+        return batch_info
+
+    @task
     def finish_pipeline(batch_info: dict) -> None:
         """
-        6. Record pipeline completion success.
+        7. Record pipeline completion success.
         """
         from src.common.db import fetch_one
         from src.monitoring.pipeline_health_builder import get_monitored_pipelines
@@ -304,6 +361,7 @@ def pipeline_health_dag():
     batch_info_flow = build_health_summary(batch_info_flow)
     batch_info_flow = run_dq(batch_info_flow)
     batch_info_flow = update_watermarks(batch_info_flow)
+    batch_info_flow = emit_pipeline_health_alerts(batch_info_flow)
     finish_pipeline(batch_info_flow)
 
 

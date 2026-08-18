@@ -2,6 +2,7 @@ import pendulum
 
 from airflow.decorators import dag, task
 from src.common.logger import get_logger
+from src.alerts.airflow_callbacks import airflow_task_failure_callback
 
 logger = get_logger(__name__)
 
@@ -11,12 +12,14 @@ default_args = {
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 0,
+    "on_failure_callback": airflow_task_failure_callback,
 }
 
 
 @dag(
     dag_id="backfill_mart_dag",
     default_args=default_args,
+    on_failure_callback=airflow_task_failure_callback,
     description="Manual Backfill Pipeline for Hourly and Daily Mart Tables",
     schedule=None,
     start_date=pendulum.datetime(2026, 7, 1, tz="UTC"),

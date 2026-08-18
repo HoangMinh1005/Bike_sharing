@@ -13,6 +13,7 @@ import { useLatestPipelineHealth, useLatestPipelineRuns } from '../hooks/usePipe
 import { formatDateTime, formatDurationMinutes, formatNumber } from '../utils/format';
 import { parseApiError } from '../utils/error';
 import { PipelineHealth, PipelineRun } from '../types/pipeline';
+import ActiveAlertsPanel from '../components/common/ActiveAlertsPanel';
 import { Activity, ShieldCheck, AlertTriangle, XCircle, Clock, Info } from 'lucide-react';
 
 export const PipelineHealthPage: React.FC = () => {
@@ -151,6 +152,11 @@ export const PipelineHealthPage: React.FC = () => {
           badgeType="health"
           icon={Clock}
         />
+      </div>
+
+      {/* Active Alerts Panel */}
+      <div className="mb-8">
+        <ActiveAlertsPanel />
       </div>
 
       {/* Monitored DAG Status Cards */}
