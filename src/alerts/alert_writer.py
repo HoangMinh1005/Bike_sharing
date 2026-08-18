@@ -151,14 +151,3 @@ def update_alert_notification_status(
         )
     except Exception as e:
         logger.error(f"Failed to update alert notification status for alert_id={alert_id}: {e}")
-        execute_sql(
-            query,
-            {
-                "alert_id": alert_id,
-                "status": status,
-                "notification_status": notification_status,
-                "notification_error": notification_error,
-            },
-        )
-    except Exception as e:
-        logger.error(f"Failed to update alert notification status for alert_id={alert_id}: {e}")
