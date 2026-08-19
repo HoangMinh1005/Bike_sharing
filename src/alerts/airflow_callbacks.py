@@ -3,6 +3,7 @@ Airflow callback handlers for task failures and pipeline exceptions.
 """
 from typing import Any, Dict
 from src.alerts.alert_models import AlertPayload, AlertSeverity, AlertType
+from src.alerts.alert_writer import resolve_open_alerts
 from src.alerts.notifier import notify_alert
 from src.common.logger import get_logger
 
@@ -60,3 +61,29 @@ def airflow_task_failure_callback(context: Dict[str, Any]) -> None:
 
     except Exception as e:
         logger.error(f"Error inside airflow_task_failure_callback: {e}")
+
+
+def airflow_task_success_callback(context: Dict[str, Any]) -> None:
+    """
+    Airflow on_success_callback handler.
+    Automatically resolves any OPEN task failure alerts for the succeeded task.
+    Guaranteed not to raise exceptions.
+    """
+    try:
+        dag_id = str(context.get("dag").dag_id if context.get("dag") else context.get("dag_id", "unknown_dag"))
+        task_id = str(context.get("task").task_id if context.get("task") else context.get("task_id", "unknown_task"))
+
+        if dag_id and task_id:
+            resolved_count = resolve_open_alerts(
+                dag_id=dag_id,
+                task_id=task_id,
+                alert_type=AlertType.AIRFLOW_TASK_FAILURE,
+            )
+            if resolved_count > 0:
+                logger.info(
+                    f"Auto-resolved {resolved_count} active failure alert(s) for succeeded DAG '{dag_id}', Task '{task_id}'"
+                )
+
+    except Exception as e:
+        logger.error(f"Error inside airflow_task_success_callback: {e}")
+

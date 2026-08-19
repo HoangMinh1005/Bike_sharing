@@ -2,7 +2,10 @@ import pendulum
 
 from airflow.decorators import dag, task
 from src.common.logger import get_logger
-from src.alerts.airflow_callbacks import airflow_task_failure_callback
+from src.alerts.airflow_callbacks import (
+    airflow_task_failure_callback,
+    airflow_task_success_callback,
+)
 
 logger = get_logger(__name__)
 
@@ -13,6 +16,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 0,
     "on_failure_callback": airflow_task_failure_callback,
+    "on_success_callback": airflow_task_success_callback,
 }
 
 

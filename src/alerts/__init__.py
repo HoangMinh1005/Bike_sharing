@@ -11,6 +11,7 @@ from src.alerts.alert_models import (
 )
 from src.alerts.alert_writer import (
     record_alert,
+    resolve_open_alerts,
     should_suppress_duplicate_alert,
     update_alert_notification_status,
 )
@@ -19,7 +20,10 @@ from src.alerts.telegram_client import (
     format_telegram_message,
     send_telegram_message,
 )
-from src.alerts.airflow_callbacks import airflow_task_failure_callback
+from src.alerts.airflow_callbacks import (
+    airflow_task_failure_callback,
+    airflow_task_success_callback,
+)
 
 __all__ = [
     "AlertConfig",
@@ -30,10 +34,12 @@ __all__ = [
     "AlertType",
     "NotificationStatus",
     "record_alert",
+    "resolve_open_alerts",
     "should_suppress_duplicate_alert",
     "update_alert_notification_status",
     "notify_alert",
     "format_telegram_message",
     "send_telegram_message",
     "airflow_task_failure_callback",
+    "airflow_task_success_callback",
 ]

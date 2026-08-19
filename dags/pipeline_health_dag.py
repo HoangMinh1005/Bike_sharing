@@ -2,7 +2,10 @@ import pendulum
 
 from airflow.decorators import dag, task
 from src.common.logger import get_logger
-from src.alerts.airflow_callbacks import airflow_task_failure_callback
+from src.alerts.airflow_callbacks import (
+    airflow_task_failure_callback,
+    airflow_task_success_callback,
+)
 
 logger = get_logger(__name__)
 
@@ -14,6 +17,7 @@ default_args = {
     "email_on_retry": False,
     "retries": 0,
     "on_failure_callback": airflow_task_failure_callback,
+    "on_success_callback": airflow_task_success_callback,
 }
 
 
@@ -252,10 +256,12 @@ def pipeline_health_dag():
         """
         from src.alerts.notifier import notify_alert
         from src.alerts.alert_models import AlertPayload, AlertSeverity, AlertType
+        from src.alerts.alert_writer import resolve_open_alerts
         from src.common.db import fetch_all
 
         run_id = batch_info["run_id"]
         try:
+            # 1. Emit alerts for unhealthy pipelines (FAILED or STALE)
             unhealthy_rows = fetch_all(
                 """
                 SELECT monitored_dag_id, health_status, health_message, freshness_lag_minutes, freshness_threshold_minutes
@@ -293,6 +299,22 @@ def pipeline_health_dag():
                     },
                 )
                 notify_alert(payload, check_dedup=True)
+
+            # 2. Auto-resolve previous STALE / FAILED alerts for monitored DAGs that are now HEALTHY
+            healthy_rows = fetch_all(
+                """
+                SELECT monitored_dag_id
+                FROM etl_metadata.pipeline_health_summary
+                WHERE health_run_id = :run_id
+                  AND health_status = 'HEALTHY'
+                """,
+                {"run_id": run_id},
+            )
+            for h_row in healthy_rows:
+                h_dag_id = h_row["monitored_dag_id"]
+                resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.PIPELINE_DAG_STALE)
+                resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.PIPELINE_DAG_FAILED)
+
         except Exception as e:
             logger.warning(f"Error checking and emitting pipeline health alerts (non-blocking): {e}")
 

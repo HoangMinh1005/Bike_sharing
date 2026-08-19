@@ -151,3 +151,41 @@ def update_alert_notification_status(
         )
     except Exception as e:
         logger.error(f"Failed to update alert notification status for alert_id={alert_id}: {e}")
+
+
+def resolve_open_alerts(
+    dag_id: Optional[str] = None,
+    task_id: Optional[str] = None,
+    alert_type: Optional[str] = None,
+) -> int:
+    """
+    Mark matching OPEN / FAILED_TO_SEND alert events as RESOLVED with resolved_at timestamp.
+    Returns the count of resolved alert events.
+    """
+    try:
+        query = """
+            UPDATE etl_metadata.alert_events
+            SET status = 'RESOLVED',
+                resolved_at = CURRENT_TIMESTAMP
+            WHERE status IN ('OPEN', 'FAILED_TO_SEND')
+              AND (CAST(:dag_id AS text) IS NULL OR dag_id = :dag_id)
+              AND (CAST(:task_id AS text) IS NULL OR task_id = :task_id)
+              AND (CAST(:alert_type AS text) IS NULL OR alert_type = :alert_type)
+        """
+        affected = execute_sql(
+            query,
+            {
+                "dag_id": dag_id,
+                "task_id": task_id,
+                "alert_type": alert_type,
+            },
+        )
+        if affected > 0:
+            logger.info(
+                f"Resolved {affected} active alert(s) for dag={dag_id}, task={task_id}, type={alert_type}"
+            )
+        return affected
+    except Exception as e:
+        logger.error(f"Failed to resolve open alerts for dag={dag_id}, task={task_id}, type={alert_type}: {e}")
+        return 0
+

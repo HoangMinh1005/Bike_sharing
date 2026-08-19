@@ -90,7 +90,7 @@ def notify_alert(payload: AlertPayload, check_dedup: bool = True) -> Optional[st
             if alert_id:
                 update_alert_notification_status(
                     alert_id=alert_id,
-                    status=AlertStatus.SENT,
+                    status=AlertStatus.OPEN,
                     notification_status=NotificationStatus.SENT,
                     notification_error=None,
                 )

@@ -15,6 +15,7 @@ from src.alerts.alert_models import (
 )
 from src.alerts.alert_writer import (
     record_alert,
+    resolve_open_alerts,
     should_suppress_duplicate_alert,
     update_alert_notification_status,
 )
@@ -23,7 +24,10 @@ from src.alerts.telegram_client import (
     format_telegram_message,
     send_telegram_message,
 )
-from src.alerts.airflow_callbacks import airflow_task_failure_callback
+from src.alerts.airflow_callbacks import (
+    airflow_task_failure_callback,
+    airflow_task_success_callback,
+)
 from src.common.db import fetch_one
 
 
@@ -244,3 +248,103 @@ def test_airflow_task_failure_callback():
     assert row["alert_type"] == AlertType.AIRFLOW_TASK_FAILURE
     assert row["severity"] == AlertSeverity.ERROR
     assert "Simulated DB connection failed" in row["message"]
+
+
+def test_notify_alert_successful_delivery_keeps_status_open(monkeypatch):
+    """Test successful Telegram send leaves alert status as OPEN so it stays active on Dashboard."""
+    monkeypatch.setenv("ALERT_WEBHOOK_ENABLED", "true")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "mock_token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "mock_chat_id")
+
+    payload = AlertPayload(
+        alert_type="TEST_SUCCESS_DELIVERY_KEEP_OPEN",
+        severity=AlertSeverity.ERROR,
+        source="unit_test",
+        title="Successful Delivery Test",
+        message="Should remain OPEN in status and SENT in notification_status",
+    )
+
+    with patch("src.alerts.notifier.send_telegram_message", return_value={"ok": True}):
+        alert_id = notify_alert(payload, check_dedup=False)
+        assert alert_id is not None
+
+    row = fetch_one(
+        "SELECT status, notification_status FROM etl_metadata.alert_events WHERE alert_id = CAST(:alert_id AS uuid)",
+        {"alert_id": alert_id},
+    )
+    assert row["status"] == AlertStatus.OPEN
+    assert row["notification_status"] == NotificationStatus.SENT
+
+
+def test_resolve_open_alerts():
+    """Test resolve_open_alerts marks active alerts as RESOLVED with resolved_at."""
+    payload = AlertPayload(
+        alert_type="TEST_RESOLVE_TARGET",
+        severity=AlertSeverity.ERROR,
+        source="unit_test",
+        title="To be resolved",
+        message="Simulating active alert to resolve",
+        dag_id="resolve_test_dag",
+        task_id="resolve_test_task",
+    )
+    alert_id = record_alert(payload)
+    assert alert_id is not None
+
+    # Resolve alerts for this dag and task
+    resolved_count = resolve_open_alerts(
+        dag_id="resolve_test_dag",
+        task_id="resolve_test_task",
+        alert_type="TEST_RESOLVE_TARGET",
+    )
+    assert resolved_count >= 1
+
+    row = fetch_one(
+        "SELECT status, resolved_at FROM etl_metadata.alert_events WHERE alert_id = CAST(:alert_id AS uuid)",
+        {"alert_id": alert_id},
+    )
+    assert row["status"] == AlertStatus.RESOLVED
+    assert row["resolved_at"] is not None
+
+
+def test_airflow_task_success_callback():
+    """Test Airflow task success callback auto-resolves active task failure alerts."""
+    # First, simulate a failure alert for a task
+    fail_payload = AlertPayload(
+        alert_type=AlertType.AIRFLOW_TASK_FAILURE,
+        severity=AlertSeverity.ERROR,
+        source="airflow",
+        title="Task Failed",
+        message="DB connection error",
+        dag_id="recovery_dag",
+        task_id="recovery_task",
+    )
+    alert_id = record_alert(fail_payload)
+    assert alert_id is not None
+
+    # Verify it is initially OPEN
+    row_before = fetch_one(
+        "SELECT status FROM etl_metadata.alert_events WHERE alert_id = CAST(:alert_id AS uuid)",
+        {"alert_id": alert_id},
+    )
+    assert row_before["status"] == AlertStatus.OPEN
+
+    # Simulate next task run succeeding
+    mock_dag = MagicMock()
+    mock_dag.dag_id = "recovery_dag"
+    mock_task = MagicMock()
+    mock_task.task_id = "recovery_task"
+
+    success_context = {
+        "dag": mock_dag,
+        "task": mock_task,
+    }
+    airflow_task_success_callback(success_context)
+
+    # Verify alert is now RESOLVED
+    row_after = fetch_one(
+        "SELECT status, resolved_at FROM etl_metadata.alert_events WHERE alert_id = CAST(:alert_id AS uuid)",
+        {"alert_id": alert_id},
+    )
+    assert row_after["status"] == AlertStatus.RESOLVED
+    assert row_after["resolved_at"] is not None
+
