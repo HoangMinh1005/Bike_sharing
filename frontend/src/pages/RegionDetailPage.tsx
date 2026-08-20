@@ -12,7 +12,7 @@ import DateFilter from '../components/common/DateFilter';
 import { useRegionDaily, useRegionStations } from '../hooks/useRegions';
 import { useSystemLatest } from '../hooks/useSystem';
 import { formatDate, formatNumber, formatPercent } from '../utils/format';
-import { getPastDateString, getTodayDateString } from '../utils/date';
+import { getPastDateString } from '../utils/date';
 import { parseApiError } from '../utils/error';
 import { StationDailySummary } from '../types/station';
 import { ArrowLeft, Compass, MapPin, Bike, Layers } from 'lucide-react';
@@ -26,27 +26,35 @@ export const RegionDetailPage: React.FC = () => {
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = summaryDate || latestDate || '';
 
-  const todayStr = getTodayDateString();
-  const past30Str = getPastDateString(30);
-
   const {
     data: dailyRes,
     isLoading: isDailyLoading,
     isError: isDailyError,
     error: dailyError,
     refetch: refetchDaily,
-  } = useRegionDaily(regionId || '', { start_date: past30Str, end_date: todayStr });
+  } = useRegionDaily(
+    regionId || '',
+    effectiveDate
+      ? {
+          start_date: getPastDateString(14, effectiveDate),
+          end_date: effectiveDate,
+        }
+      : undefined
+  );
 
-  const { data: stationsRes, isLoading: isStationsLoading } = useRegionStations(regionId || '', { summary_date: effectiveDate });
+  const {
+    data: stationsRes,
+    isLoading: isStationsLoading,
+  } = useRegionStations(regionId || '', effectiveDate ? { summary_date: effectiveDate } : undefined);
 
   if (!regionId) {
     return (
-      <PageContainer title="Region Detail">
+      <PageContainer title="Region Not Found">
         <ErrorState
           title="Invalid Region ID"
-          message="No valid region identifier provided in the URL route path."
+          message="No region ID was specified in the URL."
           severity="warning"
-          actionLabel="Back to Regions"
+          actionLabel="Go to Regions List"
           onRetry={() => navigate('/regions')}
         />
       </PageContainer>
@@ -90,8 +98,8 @@ export const RegionDetailPage: React.FC = () => {
           </button>
         </div>
         <EmptyState
-          title={`No history for region '${regionId}' yet`}
-          message="Station observations for this region are being recorded, but regional aggregations have not been completed yet."
+          title="No data for this region"
+          message="There are no aggregated daily metrics available for this region on this date."
           actionLabel="Refresh Data"
           onAction={refetchDaily}
         />
@@ -114,7 +122,15 @@ export const RegionDetailPage: React.FC = () => {
 
   const stationColumns: Column<StationDailySummary>[] = [
     { key: 'station_id', header: 'Station ID', render: (r) => <span className="font-mono font-medium text-slate-900">{r.station_id}</span> },
-    { key: 'station_name', header: 'Station Name', render: (r) => <span className="font-semibold text-slate-800">{r.station_name || '-'}</span> },
+    {
+      key: 'station_name',
+      header: 'Station Name',
+      render: (r) => (
+        <span className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+          {r.station_name || '-'}
+        </span>
+      ),
+    },
     { key: 'avg_availability_rate', header: 'Availability Rate', align: 'right', render: (r) => formatPercent(r.avg_availability_rate) },
     { key: 'avg_dock_utilization_rate', header: 'Dock Utilization', align: 'right', render: (r) => formatPercent(r.avg_dock_utilization_rate) },
     { key: 'avg_bikes_available', header: 'Avg Bikes', align: 'right', render: (r) => formatNumber(r.avg_bikes_available, 1) },

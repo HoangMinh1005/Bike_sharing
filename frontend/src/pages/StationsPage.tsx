@@ -26,12 +26,22 @@ export const StationsPage: React.FC = () => {
   const latestDate = latestRes?.data?.summary_date;
   const effectiveDate = summaryDate || latestDate || '';
 
-  const { data: stationsRes, isLoading, isError, error, refetch } = useStationsDaily({
-    summary_date: effectiveDate,
-    limit: 50,
-    sort_by: sortBy,
-    sort_order: sortOrder,
-  });
+  const {
+    data: stationsRes,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useStationsDaily(
+    effectiveDate
+      ? {
+          summary_date: effectiveDate,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          limit: 100,
+        }
+      : undefined
+  );
 
   const { data: searchRes, isLoading: isSearchLoading } = useStationSearch(searchTerm, 10);
 
@@ -51,7 +61,15 @@ export const StationsPage: React.FC = () => {
 
   const tableColumns: Column<StationDailySummary>[] = [
     { key: 'station_id', header: 'Station ID', render: (r) => <span className="font-mono font-medium text-slate-900">{r.station_id}</span> },
-    { key: 'station_name', header: 'Station Name', render: (r) => <span className="font-semibold text-slate-800">{r.station_name || '-'}</span> },
+    {
+      key: 'station_name',
+      header: 'Station Name',
+      render: (r) => (
+        <span className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+          {r.station_name || '-'}
+        </span>
+      ),
+    },
     { key: 'region_name', header: 'Region', render: (r) => r.region_name || r.region_id || '-' },
     { key: 'avg_bikes_available', header: 'Avg Bikes', align: 'right', render: (r) => formatNumber(r.avg_bikes_available, 1) },
     { key: 'avg_docks_available', header: 'Avg Docks', align: 'right', render: (r) => formatNumber(r.avg_docks_available, 1) },

@@ -100,8 +100,8 @@ def get_station_daily_history(
 
 def get_station_hourly_history(
     station_id: str,
-    start_time: str,
-    end_time: str,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> Tuple[List[dict], int]:
@@ -110,31 +110,36 @@ def get_station_hourly_history(
 
     Source: mart.hourly_station_availability
     """
+    where_clauses = ["station_id = :station_id"]
     params = {
         "station_id": station_id,
-        "start_time": start_time,
-        "end_time": end_time,
         "limit": limit,
         "offset": offset,
     }
 
-    count_sql = """
+    if start_time:
+        where_clauses.append("hour_bucket >= CAST(:start_time AS TIMESTAMP)")
+        params["start_time"] = start_time
+
+    if end_time:
+        where_clauses.append("hour_bucket <= CAST(:end_time AS TIMESTAMP)")
+        params["end_time"] = end_time
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+
+    count_sql = f"""
         SELECT COUNT(*) AS count
         FROM mart.hourly_station_availability
-        WHERE station_id = :station_id
-          AND hour_bucket >= CAST(:start_time AS TIMESTAMP)
-          AND hour_bucket <= CAST(:end_time AS TIMESTAMP)
+        {where_sql}
     """
     count_row = fetch_one(count_sql, params)
     total_count = count_row["count"] if count_row else 0
 
-    data_sql = """
+    data_sql = f"""
         SELECT *
         FROM mart.hourly_station_availability
-        WHERE station_id = :station_id
-          AND hour_bucket >= CAST(:start_time AS TIMESTAMP)
-          AND hour_bucket <= CAST(:end_time AS TIMESTAMP)
-        ORDER BY hour_bucket ASC
+        {where_sql}
+        ORDER BY hour_bucket DESC
         LIMIT :limit OFFSET :offset
     """
     records = fetch_all(data_sql, params)

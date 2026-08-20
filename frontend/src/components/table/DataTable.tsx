@@ -61,6 +61,11 @@ export function DataTable<T>({
                   {col.header}
                 </th>
               ))}
+              {onRowClick && (
+                <th className="py-3 px-3 text-right font-semibold text-slate-400 uppercase tracking-wider w-16">
+                  Action
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -70,8 +75,10 @@ export function DataTable<T>({
                 <tr
                   key={keyExtractor(row, globalIndex)}
                   onClick={() => onRowClick && onRowClick(row)}
-                  className={`transition-colors ${
-                    onRowClick ? 'cursor-pointer hover:bg-slate-50/80' : 'hover:bg-slate-50/50'
+                  className={`group transition-all duration-150 ${
+                    onRowClick
+                      ? 'cursor-pointer hover:bg-indigo-50/60 hover:shadow-xs select-none'
+                      : 'hover:bg-slate-50/50'
                   }`}
                 >
                   {columns.map((col) => (
@@ -84,6 +91,13 @@ export function DataTable<T>({
                       {col.render ? col.render(row, globalIndex) : (row as any)[col.key] ?? '-'}
                     </td>
                   ))}
+                  {onRowClick && (
+                    <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-indigo-600 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+                        Details <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </td>
+                  )}
                 </tr>
               );
             })}

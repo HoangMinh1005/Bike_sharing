@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RefreshCw, CheckCircle, AlertCircle, AlertTriangle, Clock } from 'lucide-react';
 import { useApiHealth } from '../../hooks/useHealth';
 import { useFreshnessSummary } from '../../hooks/useFreshness';
@@ -8,9 +8,22 @@ export const Header: React.FC = () => {
   const { data: healthData, isLoading: isHealthLoading, isError: isHealthError } = useApiHealth();
   const { data: freshnessRes, isLoading: isFreshnessLoading } = useFreshnessSummary();
   const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries();
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    try {
+      setIsRefreshing(true);
+      // Invalidate and refetch all currently active queries on the dashboard
+      await queryClient.refetchQueries({ type: 'active' });
+    } catch (err) {
+      console.error('Failed to refresh queries:', err);
+    } finally {
+      // Provide smooth visual feedback
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 600);
+    }
   };
 
   const statusStr = healthData?.data?.status?.toLowerCase();
@@ -109,11 +122,12 @@ export const Header: React.FC = () => {
         {/* Refresh Button */}
         <button
           onClick={handleRefresh}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200"
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-all border border-slate-200 disabled:opacity-70 cursor-pointer select-none"
           title="Refresh All Dashboard Data"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
     </header>

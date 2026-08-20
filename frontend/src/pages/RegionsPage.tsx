@@ -38,7 +38,15 @@ export const RegionsPage: React.FC = () => {
 
   const tableColumns: Column<RegionDailySummary>[] = [
     { key: 'region_id', header: 'Region ID', render: (r) => <span className="font-mono font-medium text-slate-900">{r.region_id}</span> },
-    { key: 'region_name', header: 'Region Name', render: (r) => <span className="font-semibold text-slate-800">{r.region_name || '-'}</span> },
+    {
+      key: 'region_name',
+      header: 'Region Name',
+      render: (r) => (
+        <span className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+          {r.region_name || '-'}
+        </span>
+      ),
+    },
     { key: 'station_count', header: 'Total Stations', align: 'right', render: (r) => formatNumber(r.station_count) },
     { key: 'active_station_count', header: 'Active Stations', align: 'right', render: (r) => formatNumber(r.active_station_count) },
     { key: 'avg_availability_rate', header: 'Availability Rate', align: 'right', render: (r) => formatPercent(r.avg_availability_rate) },

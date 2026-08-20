@@ -32,7 +32,7 @@ export const StationDetailPage: React.FC = () => {
 
   const { data: hourlyRes, isLoading: isHourlyLoading } = useStationHourly(
     stationId || '',
-    { start_time: `${todayStr}T00:00:00`, end_time: `${todayStr}T23:59:59`, limit: 24 }
+    { limit: 24 }
   );
 
   if (!stationId) {
@@ -101,9 +101,12 @@ export const StationDetailPage: React.FC = () => {
   );
   const latestSummary = sortedHistoryAsc[sortedHistoryAsc.length - 1];
   const hourlyData = hourlyRes?.data || [];
+  const sortedHourlyAsc = [...hourlyData].sort(
+    (a, b) => new Date(a.hour_bucket).getTime() - new Date(b.hour_bucket).getTime()
+  );
 
   // Chart data formatting
-  const hourlyChartData = hourlyData.map((h) => ({
+  const hourlyChartData = sortedHourlyAsc.map((h) => ({
     hour: h.hour_bucket ? h.hour_bucket.substring(11, 16) : '-',
     availabilityRate: h.availability_rate ? h.availability_rate * 100 : 0,
     dockUtilization: h.dock_utilization_rate ? h.dock_utilization_rate * 100 : 0,
@@ -175,7 +178,7 @@ export const StationDetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <LineChartCard
             title="Hourly Availability & Dock Utilization Rate (%)"
-            subtitle="24-hour observation buckets"
+            subtitle="Recent 24-hour observation trend"
             data={hourlyChartData}
             xAxisKey="hour"
             series={[
@@ -187,7 +190,7 @@ export const StationDetailPage: React.FC = () => {
 
           <LineChartCard
             title="Hourly Available Bikes vs Docks"
-            subtitle="Inventory availability across day"
+            subtitle="Recent 24-hour inventory availability"
             data={hourlyChartData}
             xAxisKey="hour"
             series={[

@@ -89,7 +89,15 @@ export const DemandRankingPage: React.FC = () => {
       ),
     },
     { key: 'station_id', header: 'Station ID', render: (r) => <span className="font-mono font-medium text-slate-900">{r.station_id}</span> },
-    { key: 'station_name', header: 'Station Name', render: (r) => <span className="font-semibold text-slate-800">{r.station_name || '-'}</span> },
+    {
+      key: 'station_name',
+      header: 'Station Name',
+      render: (r) => (
+        <span className="font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+          {r.station_name || '-'}
+        </span>
+      ),
+    },
     { key: 'region_name', header: 'Region', render: (r) => r.region_name || r.region_id || '-' },
     {
       key: 'demand_category',

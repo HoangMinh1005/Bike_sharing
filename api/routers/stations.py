@@ -119,12 +119,7 @@ def get_station_hourly(
     pagination: tuple[int, int] = Depends(pagination_params),
 ):
     """Lấy chuỗi thời gian trạng thái trạm theo giờ của một trạm cụ thể."""
-    import pendulum
-
-    eff_end = end_time or pendulum.now("UTC").to_iso8601_string()
-    eff_start = start_time or pendulum.now("UTC").subtract(hours=24).to_iso8601_string()
-
-    valid_start, valid_end = validate_datetime_range(eff_start, eff_end)
+    valid_start, valid_end = validate_datetime_range(start_time, end_time)
     limit, offset = pagination
 
     cache_key = make_cache_key(
