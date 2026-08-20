@@ -46,14 +46,25 @@ def get_latest_alerts(limit: int = 20) -> List[dict]:
 
 def get_active_alerts(limit: int = 50) -> List[dict]:
     """
-    Retrieve currently active / open alert events (OPEN or FAILED_TO_SEND).
+    Retrieve currently active alert events (OPEN or FAILED_TO_SEND)
+    along with recently RESOLVED alerts from the last 24 hours.
+    Unresolved alerts persist indefinitely; resolved alerts disappear after 24h.
     """
     try:
         query = """
             SELECT *
             FROM etl_metadata.alert_events
             WHERE status IN ('OPEN', 'FAILED_TO_SEND')
-            ORDER BY created_at DESC
+               OR (
+                   status = 'RESOLVED'
+                   AND (
+                       resolved_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                       OR created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                   )
+               )
+            ORDER BY
+                CASE WHEN status IN ('OPEN', 'FAILED_TO_SEND') THEN 0 ELSE 1 END ASC,
+                created_at DESC
             LIMIT :limit
         """
         rows = fetch_all(query, {"limit": limit})
@@ -121,7 +132,8 @@ def get_alert_history(
 
 def get_alert_stats() -> dict:
     """
-    Calculate summary count statistics for active alerts grouped by severity.
+    Calculate summary count statistics for active alerts grouped by severity,
+    plus the count of resolved alerts in the last 24 hours.
     """
     default_stats = {
         "total_active": 0,
@@ -129,6 +141,7 @@ def get_alert_stats() -> dict:
         "error_count": 0,
         "warning_count": 0,
         "info_count": 0,
+        "resolved_count": 0,
     }
     try:
         query = """
@@ -137,7 +150,14 @@ def get_alert_stats() -> dict:
                 COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'CRITICAL') AS critical_count,
                 COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'ERROR') AS error_count,
                 COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'WARNING') AS warning_count,
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'INFO') AS info_count
+                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'INFO') AS info_count,
+                COUNT(*) FILTER (
+                    WHERE status = 'RESOLVED'
+                    AND (
+                        resolved_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                        OR created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                    )
+                ) AS resolved_count
             FROM etl_metadata.alert_events
         """
         row = fetch_one(query)
@@ -148,6 +168,7 @@ def get_alert_stats() -> dict:
                 "error_count": int(row.get("error_count") or 0),
                 "warning_count": int(row.get("warning_count") or 0),
                 "info_count": int(row.get("info_count") or 0),
+                "resolved_count": int(row.get("resolved_count") or 0),
             }
         return default_stats
     except Exception as e:

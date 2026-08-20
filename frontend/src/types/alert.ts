@@ -27,4 +27,5 @@ export interface AlertStats {
   error_count: number;
   warning_count: number;
   info_count: number;
+  resolved_count?: number;
 }

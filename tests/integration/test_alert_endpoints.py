@@ -37,7 +37,7 @@ def seed_test_alerts():
 
 
 def test_get_alerts_stats():
-    """Test /api/v1/alerts/stats endpoint returns summary counts."""
+    """Test /api/v1/alerts/stats endpoint returns summary counts including resolved_count."""
     response = client.get("/api/v1/alerts/stats")
     assert response.status_code == 200
     data = response.json().get("data", {})
@@ -46,6 +46,7 @@ def test_get_alerts_stats():
     assert "error_count" in data
     assert "warning_count" in data
     assert "info_count" in data
+    assert "resolved_count" in data
     assert data["critical_count"] >= 1
     assert data["warning_count"] >= 1
 
@@ -64,13 +65,13 @@ def test_get_latest_alerts():
 
 
 def test_get_active_alerts():
-    """Test /api/v1/alerts/active endpoint returns active/open alerts."""
+    """Test /api/v1/alerts/active endpoint returns active/open alerts and recent resolved alerts."""
     response = client.get("/api/v1/alerts/active?limit=10")
     assert response.status_code == 200
     data = response.json().get("data", [])
     assert isinstance(data, list)
     for alert in data:
-        assert alert["status"] in ("OPEN", "FAILED_TO_SEND", "DISABLED")
+        assert alert["status"] in ("OPEN", "FAILED_TO_SEND", "DISABLED", "RESOLVED")
 
 
 def test_get_alert_history_filtering():

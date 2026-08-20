@@ -23,6 +23,12 @@ __pycache__/
 # Docker and local storage logs
 *.log
 
+# SSL Certificates & Certbot data
+docker/nginx/certbot/
+*.pem
+*.key
+*.crt
+
 # IDE settings
 .vscode/
 .idea/

@@ -231,3 +231,4 @@ class AlertStats(BaseSchema):
     error_count: int = 0
     warning_count: int = 0
     info_count: int = 0
+    resolved_count: int = 0
