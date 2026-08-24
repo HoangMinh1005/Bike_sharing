@@ -1,8 +1,13 @@
-from src.common.db import fetch_one
+from src.common.db import fetch_all, fetch_one
 from src.common.logger import get_logger
 from src.quality.metadata_checks import write_dq_result
+from src.services.metadata_refresh_service import refresh_gbfs_station_metadata
 
 logger = get_logger(__name__)
+
+# Controlled self-healing thresholds for metadata drift
+AUTO_REFRESH_MAX_UNMAPPED_COUNT = 5
+AUTO_REFRESH_MAX_UNMAPPED_RATE = 0.002  # 0.2% max acceptable rate
 
 
 def run_station_status_dq_checks(run_id: str, batch_id: str) -> None:
@@ -535,6 +540,16 @@ def run_station_status_dq_checks(run_id: str, batch_id: str) -> None:
 
     for check in checks:
         try:
+            # Special controlled self-healing handling for metadata mapping check
+            if check["name"] == "staging_station_status_map_to_stations_metadata":
+                _run_metadata_mapping_check_with_self_healing(
+                    run_id=run_id,
+                    batch_id=batch_id,
+                    check=check,
+                    critical_failures=critical_failures,
+                )
+                continue
+
             result = fetch_one(check["sql"], {"batch_id": batch_id})
             failed_count = int(result["failed_count"] or 0) if result else 0
 
@@ -614,4 +629,156 @@ def run_station_status_dq_checks(run_id: str, batch_id: str) -> None:
     logger.info(
         f"All station_status data quality checks executed successfully "
         f"for batch_id={batch_id}."
+    )
+
+
+def _run_metadata_mapping_check_with_self_healing(
+    run_id: str,
+    batch_id: str,
+    check: dict,
+    critical_failures: list,
+) -> None:
+    """
+    Execute staging_station_status_map_to_stations_metadata check with controlled self-healing.
+
+    Flow:
+    1. Count total station_status records and unmapped station_status records.
+    2. If unmapped_count == 0:
+       - PASS. Record DQ result and return.
+    3. If unmapped_count > 0 and (unmapped_count <= AUTO_REFRESH_MAX_UNMAPPED_COUNT and rate <= AUTO_REFRESH_MAX_UNMAPPED_RATE):
+       - Log metadata drift detection.
+       - Trigger controlled inline refresh: refresh_gbfs_station_metadata(batch_id=batch_id, reason="metadata_drift_self_healing").
+       - Re-check unmapped count.
+       - If new_unmapped_count == 0:
+         - PASS_SELF_HEALED. Record DQ result. Do NOT fail pipeline or trigger Telegram error alert.
+       - Else:
+         - FAIL. Record DQ result and append to critical_failures.
+    4. If unmapped_count > AUTO_REFRESH_MAX_UNMAPPED_COUNT or rate > AUTO_REFRESH_MAX_UNMAPPED_RATE:
+       - FAIL (exceeds threshold, no auto self-heal). Record DQ result and append to critical_failures.
+    """
+    total_row = fetch_one(
+        "SELECT COUNT(*) AS cnt FROM staging.station_status WHERE batch_id = :batch_id",
+        {"batch_id": batch_id},
+    )
+    total_count = int(total_row["cnt"] or 0) if total_row else 0
+
+    unmapped_rows = fetch_all(
+        """
+        SELECT ss.station_id
+        FROM staging.station_status ss
+        LEFT JOIN staging.stations s
+            ON ss.station_id = s.station_id
+        WHERE ss.batch_id = :batch_id
+          AND s.station_id IS NULL
+        """,
+        {"batch_id": batch_id},
+    )
+    unmapped_count = len(unmapped_rows)
+    unmapped_ids = [r["station_id"] for r in unmapped_rows[:5]]
+    unmapped_rate = (unmapped_count / total_count) if total_count > 0 else 0.0
+
+    if unmapped_count == 0:
+        message = f"Batch {batch_id}: All station_status records map to stations metadata."
+        logger.info(f"DQ Check PASSED: {check['name']} on {check['table']}")
+        write_dq_result(
+            run_id=run_id,
+            table_name=check["table"],
+            check_name=check["name"],
+            status="passed",
+            failed_count=0,
+            severity=check["severity"],
+            message=message,
+        )
+        return
+
+    can_self_heal = (
+        unmapped_count <= AUTO_REFRESH_MAX_UNMAPPED_COUNT
+        and unmapped_rate <= AUTO_REFRESH_MAX_UNMAPPED_RATE
+    )
+
+    if can_self_heal:
+        logger.warning(
+            f"Batch {batch_id}: Detected recoverable metadata drift! "
+            f"unmapped_count={unmapped_count}, unmapped_rate={unmapped_rate:.4f}, "
+            f"sample_unmapped_ids={unmapped_ids}. "
+            f"Attempting controlled inline metadata refresh..."
+        )
+
+        try:
+            refresh_result = refresh_gbfs_station_metadata(
+                batch_id=batch_id,
+                reason="metadata_drift_self_healing",
+            )
+            logger.info(
+                f"Batch {batch_id}: Metadata refresh finished. "
+                f"result={refresh_result}"
+            )
+
+            recheck_rows = fetch_all(
+                """
+                SELECT ss.station_id
+                FROM staging.station_status ss
+                LEFT JOIN staging.stations s
+                    ON ss.station_id = s.station_id
+                WHERE ss.batch_id = :batch_id
+                  AND s.station_id IS NULL
+                """,
+                {"batch_id": batch_id},
+            )
+            new_unmapped_count = len(recheck_rows)
+            new_unmapped_ids = [r["station_id"] for r in recheck_rows[:5]]
+
+            if new_unmapped_count == 0:
+                message = (
+                    f"Batch {batch_id}: Self-healed {unmapped_count} unmapped station_status record(s) "
+                    f"({unmapped_ids}) after refreshing metadata."
+                )
+                logger.info(
+                    f"DQ Check PASSED (SELF_HEALED): {check['name']} on {check['table']} - {message}"
+                )
+                write_dq_result(
+                    run_id=run_id,
+                    table_name=check["table"],
+                    check_name=check["name"],
+                    status="passed",
+                    failed_count=0,
+                    severity=check["severity"],
+                    message=message,
+                )
+                return
+            else:
+                message = (
+                    f"Batch {batch_id}: Self-healing refresh attempted, but {new_unmapped_count} "
+                    f"record(s) ({new_unmapped_ids}) remain unmapped."
+                )
+                failed_count = new_unmapped_count
+
+        except Exception as refresh_err:
+            logger.error(
+                f"Batch {batch_id}: Error during controlled metadata refresh: {refresh_err}"
+            )
+            message = (
+                f"Batch {batch_id}: Controlled metadata refresh failed: {refresh_err}. "
+                f"Original unmapped count: {unmapped_count}."
+            )
+            failed_count = unmapped_count
+
+    else:
+        message = (
+            f"Batch {batch_id}: Found {unmapped_count} unmapped station_status record(s) "
+            f"({unmapped_ids}, rate: {unmapped_rate:.4f}), which exceeds self-healing threshold "
+            f"(max_count={AUTO_REFRESH_MAX_UNMAPPED_COUNT}, max_rate={AUTO_REFRESH_MAX_UNMAPPED_RATE})."
+        )
+        failed_count = unmapped_count
+
+    logger.error(f"DQ Check FAILED: {check['name']} on {check['table']} - {message}")
+    critical_failures.append(f"{check['name']}: {message}")
+    write_dq_result(
+        run_id=run_id,
+        table_name=check["table"],
+        check_name=check["name"],
+        status="failed",
+        failed_count=failed_count,
+        severity=check["severity"],
+        message=message,
     )
