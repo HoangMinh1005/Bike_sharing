@@ -2,15 +2,16 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from api.metrics import handle_metrics_endpoint, prometheus_metrics_middleware
 from api.response import make_error_response
-from api.routers.health import router as health_router
-from api.routers.system import router as system_router
-from api.routers.stations import router as stations_router
-from api.routers.regions import router as regions_router
-from api.routers.ranking import router as ranking_router
-from api.routers.pipelines import router as pipelines_router
-from api.routers.freshness import router as freshness_router
 from api.routers.alerts import router as alerts_router
+from api.routers.freshness import router as freshness_router
+from api.routers.health import router as health_router
+from api.routers.pipelines import router as pipelines_router
+from api.routers.ranking import router as ranking_router
+from api.routers.regions import router as regions_router
+from api.routers.stations import router as stations_router
+from api.routers.system import router as system_router
 from src.common.logger import get_logger
 
 logger = get_logger(__name__)
@@ -27,19 +28,33 @@ app = FastAPI(
 
 import os
 
+# Register Prometheus HTTP metrics middleware
+app.middleware("http")(prometheus_metrics_middleware)
+
 frontend_origins_env = os.getenv("FRONTEND_ORIGINS", "*").strip()
 if frontend_origins_env == "*" or not frontend_origins_env:
     allowed_origins = ["*"]
 else:
     allowed_origins = [orig.strip() for orig in frontend_origins_env.split(",") if orig.strip()]
+    for local_dev_origin in [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]:
+        if local_dev_origin not in allowed_origins:
+            allowed_origins.append(local_dev_origin)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=False,
-    allow_methods=["GET", "OPTIONS", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus /metrics endpoint (for internal scrape)
+app.add_api_route("/metrics", handle_metrics_endpoint, methods=["GET"], include_in_schema=False)
 
 # Include Routers under /api/v1 prefix
 api_v1_prefix = "/api/v1"
@@ -61,6 +76,7 @@ def read_root():
         "docs": "/docs",
         "version": "1.0.0",
     }
+
 
 
 # Exception Handlers

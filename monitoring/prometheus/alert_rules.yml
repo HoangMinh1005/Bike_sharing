@@ -1,0 +1,101 @@
+groups:
+  - name: gbfs_sla_alerts
+    rules:
+      - alert: FastAPITargetDown
+        expr: up{job="fastapi"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FastAPI service target is down"
+          description: "FastAPI REST API instance has been unreachable for more than 2 minutes."
+
+      - alert: HighAPIErrorRate
+        expr: (sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) * 100 > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API 5xx Error Rate (>1%)"
+          description: "FastAPI 5xx server error rate is {{ $value | printf \"%.2f\" }}% over the last 5 minutes."
+
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API p95 Latency (>2s)"
+          description: "FastAPI p95 request latency is {{ $value | printf \"%.2f\" }}s over the last 5 minutes."
+
+      - alert: StationStatusFreshnessWarning
+        expr: gbfs_station_status_freshness_lag_minutes > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Station Status snapshot freshness lag > 30 minutes"
+          description: "Station status real-time snapshot is lagging by {{ $value | printf \"%.1f\" }} minutes."
+
+      - alert: StationStatusFreshnessCritical
+        expr: gbfs_station_status_freshness_lag_minutes > 60
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Station Status snapshot freshness lag > 60 minutes (CRITICAL)"
+          description: "Station status real-time snapshot is severely lagging by {{ $value | printf \"%.1f\" }} minutes."
+
+      - alert: HourlyMartFreshnessWarning
+        expr: gbfs_hourly_mart_freshness_lag_minutes > 120
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hourly Mobility Data Mart freshness lag > 2 hours"
+          description: "Hourly data mart build is lagging by {{ $value | printf \"%.1f\" }} minutes."
+
+      - alert: HourlyMartFreshnessCritical
+        expr: gbfs_hourly_mart_freshness_lag_minutes > 240
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Hourly Mobility Data Mart freshness lag > 4 hours (CRITICAL)"
+          description: "Hourly data mart build is severely lagging by {{ $value | printf \"%.1f\" }} minutes."
+
+      - alert: DailySummaryMissing
+        expr: gbfs_daily_summary_current == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daily Summary record is missing or not current"
+          description: "Daily system summary data mart has not completed for the current expected summary date."
+
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL database service is down"
+          description: "PostgreSQL exporter target is down or database is unresponsive."
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis cache service is down"
+          description: "Redis exporter target is down or cache instance is unresponsive."
+
+      - alert: DiskUsageHigh
+        expr: (node_filesystem_size_bytes{fstype=~"ext4|xfs"} - node_filesystem_free_bytes{fstype=~"ext4|xfs"}) / node_filesystem_size_bytes{fstype=~"ext4|xfs"} * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host VM Disk usage > 80%"
+          description: "Host VM disk usage is currently at {{ $value | printf \"%.1f\" }}%."

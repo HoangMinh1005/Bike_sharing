@@ -1,0 +1,282 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "A. SLA / SLO Real-Time Health Summary",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "range", "options": { "from": 0, "to": 30, "result": { "text": "HEALTHY", "color": "green" } } },
+            { "type": "range", "options": { "from": 30.01, "to": 60, "result": { "text": "WARNING", "color": "orange" } } },
+            { "type": "range", "options": { "from": 60.01, "to": 10000, "result": { "text": "STALE", "color": "red" } } }
+          ],
+          "unit": "m"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 2 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "gbfs_station_status_freshness_lag_minutes", "refId": "A" }],
+      "title": "Station Status SLA (<=30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "range", "options": { "from": 0, "to": 120, "result": { "text": "HEALTHY", "color": "green" } } },
+            { "type": "range", "options": { "from": 120.01, "to": 240, "result": { "text": "WARNING", "color": "orange" } } },
+            { "type": "range", "options": { "from": 240.01, "to": 10000, "result": { "text": "STALE", "color": "red" } } }
+          ],
+          "unit": "m"
+        }
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 2 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "gbfs_hourly_mart_freshness_lag_minutes", "refId": "A" }],
+      "title": "Hourly Mart SLA (<=2h)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "CURRENT", "color": "green" }, "0": { "text": "STALE / MISSING", "color": "red" } } }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 2 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "gbfs_daily_summary_current", "refId": "A" }],
+      "title": "Daily Summary Status",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 2 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "(sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))) * 100 or vector(0)", "refId": "A" }],
+      "title": "API 5xx Error Rate (<1%)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1.5 },
+              { "color": "red", "value": 2.0 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 2 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) or vector(0)", "refId": "A" }],
+      "title": "API p95 Latency (<2s)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 6 },
+      "id": 7,
+      "title": "B. FastAPI SLA & HTTP Performance Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{ "expr": "sum(rate(http_requests_total[5m])) by (endpoint)", "legendFormat": "{{endpoint}}", "refId": "A" }],
+      "title": "API Request Rate by Endpoint (req/sec)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))", "legendFormat": "{{endpoint}} (p95)", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "Overall System (p95)", "refId": "B" }
+      ],
+      "title": "API p95 Latency by Endpoint",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 16 },
+      "id": 10,
+      "title": "C. GBFS Data Freshness & Data Mart Ingestion Lag",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "m" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "gbfs_station_status_freshness_lag_minutes", "legendFormat": "Station Status Lag (min)", "refId": "A" },
+        { "expr": "gbfs_hourly_mart_freshness_lag_minutes", "legendFormat": "Hourly Mart Lag (min)", "refId": "B" }
+      ],
+      "title": "Data Freshness Ingestion Lag (Minutes)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "m" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [{ "expr": "gbfs_dag_latest_success_lag_minutes", "legendFormat": "{{dag_id}}", "refId": "A" }],
+      "title": "Airflow DAG Execution Lag Since Latest Success (Minutes)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 26 },
+      "id": 13,
+      "title": "D. Infrastructure & Container Health",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "legendFormat": "Host CPU Usage (%)", "refId": "A" },
+        { "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100", "legendFormat": "Host RAM Usage (%)", "refId": "B" },
+        { "expr": "(node_filesystem_size_bytes{fstype=~\"ext4|xfs\"} - node_filesystem_free_bytes{fstype=~\"ext4|xfs\"}) / node_filesystem_size_bytes{fstype=~\"ext4|xfs\"} * 100", "legendFormat": "Host Disk Usage (%)", "refId": "C" }
+      ],
+      "title": "Azure VM Host Infrastructure Resources",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } }
+          ]
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 15,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "targets": [
+        { "expr": "up{job=\"postgres\"}", "legendFormat": "PostgreSQL Service", "refId": "A" },
+        { "expr": "up{job=\"redis\"}", "legendFormat": "Redis Cache Service", "refId": "B" },
+        { "expr": "up{job=\"fastapi\"}", "legendFormat": "FastAPI REST API", "refId": "C" }
+      ],
+      "title": "Core Services Up/Down Status",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["gbfs", "sla", "slo", "monitoring"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["10s", "30s", "1m", "5m"] },
+  "timezone": "browser",
+  "title": "GBFS SLA / SLO Overview",
+  "uid": "gbfs-sla-overview",
+  "version": 1
+}
