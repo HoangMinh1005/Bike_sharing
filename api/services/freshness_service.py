@@ -117,21 +117,22 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
     """
     Fetch the latest station status snapshot timestamp.
     Checks staging.station_status first, then raw.station_status_snapshots.
-    Uses O(1) index-scan ORDER BY ... DESC LIMIT 1 to guarantee sub-millisecond execution
-    even on multi-million row production VM datasets.
+    Uses simple ORDER BY fetched_at DESC LIMIT 1 to match single-column B-tree indexes.
     """
     # 1. Try staging.station_status
     try:
         row = fetch_one(
             """
-            SELECT COALESCE(source_last_updated, fetched_at) AS latest_ts
+            SELECT source_last_updated, fetched_at
             FROM staging.station_status
-            ORDER BY fetched_at DESC, source_last_updated DESC
+            ORDER BY fetched_at DESC
             LIMIT 1
             """
         )
-        if row and row.get("latest_ts"):
-            return _ensure_utc(row["latest_ts"]), None
+        if row:
+            latest_ts = row.get("source_last_updated") or row.get("fetched_at")
+            if latest_ts:
+                return _ensure_utc(latest_ts), None
     except Exception as e:
         logger.debug(f"Query on staging.station_status failed: {e}")
 
@@ -139,14 +140,16 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
     try:
         row = fetch_one(
             """
-            SELECT COALESCE(source_last_updated, fetched_at) AS latest_ts
+            SELECT source_last_updated, fetched_at
             FROM raw.station_status_snapshots
-            ORDER BY fetched_at DESC, source_last_updated DESC
+            ORDER BY fetched_at DESC
             LIMIT 1
             """
         )
-        if row and row.get("latest_ts"):
-            return _ensure_utc(row["latest_ts"]), None
+        if row:
+            latest_ts = row.get("source_last_updated") or row.get("fetched_at")
+            if latest_ts:
+                return _ensure_utc(latest_ts), None
     except Exception as e:
         logger.debug(f"Query on raw.station_status_snapshots failed: {e}")
 
@@ -262,15 +265,16 @@ def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict
     try:
         rows = fetch_all(
             """
-            SELECT DISTINCT ON (dag_id) dag_id, COALESCE(ended_at, started_at) AS latest_success_at
+            SELECT DISTINCT ON (dag_id) dag_id, ended_at, started_at
             FROM etl_metadata.pipeline_runs
             WHERE UPPER(status) = 'SUCCESS'
-            ORDER BY dag_id, COALESCE(ended_at, started_at) DESC
+            ORDER BY dag_id, started_at DESC
             """
         )
         for r in rows:
-            if r.get("dag_id") and r.get("latest_success_at"):
-                dag_runs_map[r["dag_id"]] = _ensure_utc(r["latest_success_at"])
+            latest_success_at = r.get("ended_at") or r.get("started_at")
+            if r.get("dag_id") and latest_success_at:
+                dag_runs_map[r["dag_id"]] = _ensure_utc(latest_success_at)
     except Exception as e:
         logger.debug(f"Query on etl_metadata.pipeline_runs failed: {e}")
 
