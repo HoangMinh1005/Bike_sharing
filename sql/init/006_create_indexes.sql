@@ -35,3 +35,11 @@ ON etl_metadata.rejected_records (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_rejected_records_table_name 
 ON etl_metadata.rejected_records (table_name);
+
+-- staging.station_status & raw indexes for fast freshness check
+CREATE INDEX IF NOT EXISTS idx_staging_station_status_fetched_at 
+ON staging.station_status (fetched_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_raw_station_status_snapshots_fetched_at 
+ON raw.station_status_snapshots (fetched_at DESC);
+

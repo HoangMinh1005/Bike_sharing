@@ -336,11 +336,24 @@ def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict
     return result, warning
 
 
+import time
+
+_FRESHNESS_CACHE: Optional[Dict[str, Any]] = None
+_FRESHNESS_CACHE_TIME: float = 0.0
+_CACHE_TTL_SECONDS: float = 10.0
+
+
 def get_data_freshness_summary() -> Dict[str, Any]:
     """
     Compute comprehensive data freshness summary across all system components.
     Guarantees no unhandled exceptions even if tables are empty or missing.
+    Uses a 10s in-memory TTL cache to protect PostgreSQL from repeated DB queries.
     """
+    global _FRESHNESS_CACHE, _FRESHNESS_CACHE_TIME
+    now_mono = time.monotonic()
+    if _FRESHNESS_CACHE is not None and (now_mono - _FRESHNESS_CACHE_TIME) < _CACHE_TTL_SECONDS:
+        return _FRESHNESS_CACHE
+
     now_utc = pendulum.now("UTC")
     warnings: List[str] = []
     component_statuses: List[str] = []
@@ -412,7 +425,7 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     if overall_freshness_status == "HEALTHY" and quality_status == "WARNING":
         warnings.append("Data is Live and up-to-date; pipeline health reported non-critical Data Quality warnings.")
 
-    return {
+    res = {
         "status": overall_freshness_status,
         "quality_status": quality_status,
         "checked_at": now_utc,
@@ -425,3 +438,6 @@ def get_data_freshness_summary() -> Dict[str, Any]:
         "latest_successful_dag_runs": dag_runs,
         "warnings": warnings,
     }
+    _FRESHNESS_CACHE = res
+    _FRESHNESS_CACHE_TIME = now_mono
+    return res
