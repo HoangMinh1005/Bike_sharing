@@ -344,16 +344,29 @@ import time
 
 _FRESHNESS_CACHE: Optional[Dict[str, Any]] = None
 _FRESHNESS_CACHE_TIME: float = 0.0
-_CACHE_TTL_SECONDS: float = 10.0
+_CACHE_TTL_SECONDS: float = 15.0
 
 
 def get_data_freshness_summary() -> Dict[str, Any]:
     """
     Compute comprehensive data freshness summary across all system components.
     Guarantees no unhandled exceptions even if tables are empty or missing.
-    Uses a 10s in-memory TTL cache to protect PostgreSQL from repeated DB queries.
+    Uses multi-tier caching:
+      1. Redis shared cache across workers (TTL=15s)
+      2. In-memory per-process TTL cache fallback (TTL=15s)
     """
     global _FRESHNESS_CACHE, _FRESHNESS_CACHE_TIME
+
+    # Tier 1: Try Redis shared cache across all Uvicorn workers
+    try:
+        from api.cache import get_cache
+        cached = get_cache("bike_api:freshness_summary")
+        if cached:
+            return cached
+    except Exception as e:
+        logger.debug(f"Redis cache check failed: {e}")
+
+    # Tier 2: In-memory fallback per-process
     now_mono = time.monotonic()
     if _FRESHNESS_CACHE is not None and (now_mono - _FRESHNESS_CACHE_TIME) < _CACHE_TTL_SECONDS:
         return _FRESHNESS_CACHE
@@ -362,8 +375,12 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     warnings: List[str] = []
     component_statuses: List[str] = []
 
+    t_start = time.perf_counter()
+
     # 1. Station Status Snapshot Freshness
+    t0 = time.perf_counter()
     snapshot_ts, snapshot_warn = _safe_fetch_station_status_timestamp()
+    t_station_status = time.perf_counter() - t0
     if snapshot_warn:
         warnings.append(snapshot_warn)
     
@@ -379,14 +396,14 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     component_statuses.append(snapshot_status)
 
     # 2. Hourly Mart Freshness
+    t0 = time.perf_counter()
     hourly_ts, hourly_warn = _safe_fetch_hourly_mart_timestamp()
+    t_hourly_mart = time.perf_counter() - t0
     if hourly_warn:
         warnings.append(hourly_warn)
     
     hourly_lag_min: Optional[float] = None
     if hourly_ts:
-        # hour_bucket represents the start of the 1-hour window (e.g. 23:00 covers up to 00:00).
-        # Data coverage extends to the end of the window (hour_bucket + 1 hour).
         from datetime import timedelta
         hourly_coverage_end = hourly_ts + timedelta(hours=1)
         if hasattr(hourly_coverage_end, "tzinfo") and hourly_coverage_end.tzinfo is not None:
@@ -399,7 +416,9 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     component_statuses.append(hourly_status)
 
     # 3. Daily Summary Freshness
+    t0 = time.perf_counter()
     daily_date, daily_warn = _safe_fetch_daily_summary_date()
+    t_daily_summary = time.perf_counter() - t0
     if daily_warn:
         warnings.append(daily_warn)
     
@@ -407,15 +426,31 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     component_statuses.append(daily_status)
 
     # 4. Pipeline Health Status (Data Quality & Execution Integrity)
+    t0 = time.perf_counter()
     health_status, health_warn = _safe_fetch_latest_pipeline_health()
+    t_pipeline_health = time.perf_counter() - t0
     if health_warn:
         warnings.append(health_warn)
     quality_status = health_status or "UNKNOWN"
 
     # 5. Successful DAG Runs List
+    t0 = time.perf_counter()
     dag_runs, dag_warn = _safe_fetch_latest_successful_dag_runs(now_utc)
+    t_dag_runs = time.perf_counter() - t0
     if dag_warn:
         warnings.append(dag_warn)
+
+    t_total = time.perf_counter() - t_start
+
+    print(
+        f"[TIMING] freshness.station_status = {t_station_status:.6f}s\n"
+        f"[TIMING] freshness.hourly_mart = {t_hourly_mart:.6f}s\n"
+        f"[TIMING] freshness.daily_summary = {t_daily_summary:.6f}s\n"
+        f"[TIMING] freshness.pipeline_health = {t_pipeline_health:.6f}s\n"
+        f"[TIMING] freshness.dag_runs = {t_dag_runs:.6f}s\n"
+        f"[TIMING] freshness.total = {t_total:.6f}s",
+        flush=True,
+    )
 
     # Calculate overall time freshness status (excluding DQ warnings)
     time_statuses = list(component_statuses)
@@ -444,4 +479,9 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     }
     _FRESHNESS_CACHE = res
     _FRESHNESS_CACHE_TIME = now_mono
+    try:
+        from api.cache import set_cache
+        set_cache("bike_api:freshness_summary", res, ttl_seconds=15)
+    except Exception as e:
+        logger.debug(f"Failed to set Redis cache: {e}")
     return res

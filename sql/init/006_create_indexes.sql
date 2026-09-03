@@ -43,3 +43,14 @@ ON staging.station_status (fetched_at DESC);
 CREATE INDEX IF NOT EXISTS idx_raw_station_status_snapshots_fetched_at 
 ON raw.station_status_snapshots (fetched_at DESC);
 
+-- etl_metadata.pipeline_runs partial composite index for fast freshness scan
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_dag_success 
+ON etl_metadata.pipeline_runs (dag_id, started_at DESC) 
+INCLUDE (ended_at) 
+WHERE status = 'SUCCESS';
+
+-- etl_metadata.pipeline_health_summary index for fast latest run lookup
+CREATE INDEX IF NOT EXISTS idx_pipeline_health_checked_at 
+ON etl_metadata.pipeline_health_summary (checked_at DESC);
+
+
