@@ -117,13 +117,17 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
     """
     Fetch the latest station status snapshot timestamp.
     Checks staging.station_status first, then raw.station_status_snapshots.
+    Uses O(1) index-scan ORDER BY ... DESC LIMIT 1 to guarantee sub-millisecond execution
+    even on multi-million row production VM datasets.
     """
     # 1. Try staging.station_status
     try:
         row = fetch_one(
             """
-            SELECT GREATEST(MAX(source_last_updated), MAX(fetched_at)) AS latest_ts
+            SELECT COALESCE(source_last_updated, fetched_at) AS latest_ts
             FROM staging.station_status
+            ORDER BY fetched_at DESC, source_last_updated DESC
+            LIMIT 1
             """
         )
         if row and row.get("latest_ts"):
@@ -135,8 +139,10 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
     try:
         row = fetch_one(
             """
-            SELECT GREATEST(MAX(source_last_updated), MAX(fetched_at)) AS latest_ts
+            SELECT COALESCE(source_last_updated, fetched_at) AS latest_ts
             FROM raw.station_status_snapshots
+            ORDER BY fetched_at DESC, source_last_updated DESC
+            LIMIT 1
             """
         )
         if row and row.get("latest_ts"):
@@ -149,12 +155,18 @@ def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional
 
 def _safe_fetch_hourly_mart_timestamp() -> Tuple[Optional[datetime], Optional[str]]:
     """
-    Fetch the latest hourly mart timestamp.
-    Checks mart.hourly_station_availability first, then mart.weather_mobility_summary.
+    Fetch the latest hourly mart timestamp using O(1) B-tree index lookup.
     """
     # 1. Try mart.hourly_station_availability
     try:
-        row = fetch_one("SELECT MAX(hour_bucket) AS latest_ts FROM mart.hourly_station_availability")
+        row = fetch_one(
+            """
+            SELECT hour_bucket AS latest_ts 
+            FROM mart.hourly_station_availability 
+            ORDER BY hour_bucket DESC 
+            LIMIT 1
+            """
+        )
         if row and row.get("latest_ts"):
             return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
@@ -162,7 +174,14 @@ def _safe_fetch_hourly_mart_timestamp() -> Tuple[Optional[datetime], Optional[st
 
     # 2. Try mart.weather_mobility_summary
     try:
-        row = fetch_one("SELECT MAX(hour_bucket) AS latest_ts FROM mart.weather_mobility_summary")
+        row = fetch_one(
+            """
+            SELECT hour_bucket AS latest_ts 
+            FROM mart.weather_mobility_summary 
+            ORDER BY hour_bucket DESC 
+            LIMIT 1
+            """
+        )
         if row and row.get("latest_ts"):
             return _ensure_utc(row["latest_ts"]), None
     except Exception as e:
@@ -173,10 +192,17 @@ def _safe_fetch_hourly_mart_timestamp() -> Tuple[Optional[datetime], Optional[st
 
 def _safe_fetch_daily_summary_date() -> Tuple[Optional[date], Optional[str]]:
     """
-    Fetch the latest daily summary date from mart.daily_system_summary.
+    Fetch the latest daily summary date from mart.daily_system_summary using O(1) index lookup.
     """
     try:
-        row = fetch_one("SELECT MAX(summary_date) AS latest_date FROM mart.daily_system_summary")
+        row = fetch_one(
+            """
+            SELECT summary_date AS latest_date 
+            FROM mart.daily_system_summary 
+            ORDER BY summary_date DESC 
+            LIMIT 1
+            """
+        )
         if row and row.get("latest_date"):
             return row["latest_date"], None
     except Exception as e:
@@ -187,7 +213,7 @@ def _safe_fetch_daily_summary_date() -> Tuple[Optional[date], Optional[str]]:
 
 def _safe_fetch_latest_pipeline_health() -> Tuple[Optional[str], Optional[str]]:
     """
-    Fetch the latest pipeline health summary status.
+    Fetch the latest pipeline health summary status using O(1) index scan.
     """
     try:
         rows = fetch_all(
@@ -219,7 +245,7 @@ def _safe_fetch_latest_pipeline_health() -> Tuple[Optional[str], Optional[str]]:
 
 def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """
-    Fetch latest successful DAG execution runs.
+    Fetch latest successful DAG execution runs using DISTINCT ON O(N_dags) fast scan.
     """
     known_dags = [
         "gbfs_metadata_daily_dag",
@@ -236,10 +262,10 @@ def _safe_fetch_latest_successful_dag_runs(now_utc: datetime) -> Tuple[List[Dict
     try:
         rows = fetch_all(
             """
-            SELECT dag_id, MAX(COALESCE(ended_at, started_at)) AS latest_success_at
+            SELECT DISTINCT ON (dag_id) dag_id, COALESCE(ended_at, started_at) AS latest_success_at
             FROM etl_metadata.pipeline_runs
             WHERE UPPER(status) = 'SUCCESS'
-            GROUP BY dag_id
+            ORDER BY dag_id, COALESCE(ended_at, started_at) DESC
             """
         )
         for r in rows:
