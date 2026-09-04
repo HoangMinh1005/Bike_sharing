@@ -113,6 +113,25 @@ def _ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
     return dt.astimezone(timezone.utc)
 
 
+def _safe_fetch_watermarks() -> Dict[str, Dict[str, Any]]:
+    """
+    Fetch all pipeline watermarks from etl_metadata.watermarks in a single O(1) query.
+    Returns a dictionary mapping source_name to row dict containing
+    'last_successful_value' and 'updated_at'.
+    """
+    try:
+        rows = fetch_all(
+            """
+            SELECT source_name, last_successful_value, updated_at
+            FROM etl_metadata.watermarks
+            """
+        )
+        return {r["source_name"]: r for r in rows if r.get("source_name")}
+    except Exception as e:
+        logger.debug(f"Query on etl_metadata.watermarks failed: {e}")
+        return {}
+
+
 def _safe_fetch_station_status_timestamp() -> Tuple[Optional[datetime], Optional[str]]:
     """
     Fetch the latest station status snapshot timestamp.
@@ -377,13 +396,33 @@ def get_data_freshness_summary() -> Dict[str, Any]:
 
     t_start = time.perf_counter()
 
-    # 1. Station Status Snapshot Freshness
+    # 0. Single fast query to load all pipeline watermarks (< 1ms)
     t0 = time.perf_counter()
-    snapshot_ts, snapshot_warn = _safe_fetch_station_status_timestamp()
+    watermarks = _safe_fetch_watermarks()
+    t_watermarks = time.perf_counter() - t0
+
+    # 1. Station Status Snapshot Freshness (from watermark: gbfs_station_status)
+    t0 = time.perf_counter()
+    snapshot_ts: Optional[datetime] = None
+    snapshot_warn: Optional[str] = None
+    wm_station = watermarks.get("gbfs_station_status")
+    if wm_station and wm_station.get("last_successful_value"):
+        try:
+            snapshot_ts = _ensure_utc(pendulum.parse(wm_station["last_successful_value"]))
+        except Exception as e:
+            logger.debug(f"Failed to parse gbfs_station_status watermark: {e}")
+            snapshot_ts = _ensure_utc(wm_station.get("updated_at"))
+    elif wm_station and wm_station.get("updated_at"):
+        snapshot_ts = _ensure_utc(wm_station["updated_at"])
+
+    # Fallback to direct staging/raw table lookup if watermark missing
+    if snapshot_ts is None:
+        snapshot_ts, snapshot_warn = _safe_fetch_station_status_timestamp()
+        if snapshot_warn:
+            warnings.append(snapshot_warn)
+
     t_station_status = time.perf_counter() - t0
-    if snapshot_warn:
-        warnings.append(snapshot_warn)
-    
+
     snapshot_lag_min: Optional[float] = None
     if snapshot_ts:
         if hasattr(snapshot_ts, "tzinfo") and snapshot_ts.tzinfo is not None:
@@ -395,17 +434,37 @@ def get_data_freshness_summary() -> Dict[str, Any]:
         snapshot_status = "UNKNOWN"
     component_statuses.append(snapshot_status)
 
-    # 2. Hourly Mart Freshness
+    # 2. Hourly Mart Freshness (from watermark: hourly_mart)
     t0 = time.perf_counter()
-    hourly_ts, hourly_warn = _safe_fetch_hourly_mart_timestamp()
+    hourly_ts: Optional[datetime] = None
+    hourly_warn: Optional[str] = None
+    hourly_coverage_end: Optional[datetime] = None
+
+    wm_hourly = watermarks.get("hourly_mart")
+    if wm_hourly and wm_hourly.get("last_successful_value"):
+        try:
+            from datetime import timedelta
+            # last_successful_value is target_hour_end (e.g. 2026-09-04 09:00:00)
+            parsed_end = _ensure_utc(pendulum.parse(wm_hourly["last_successful_value"]))
+            hourly_coverage_end = parsed_end
+            # latest_hourly_mart_at represents the bucket start hour
+            hourly_ts = parsed_end - timedelta(hours=1)
+        except Exception as e:
+            logger.debug(f"Failed to parse hourly_mart watermark: {e}")
+
+    # Fallback to direct mart table lookup if watermark missing
+    if hourly_ts is None:
+        hourly_ts, hourly_warn = _safe_fetch_hourly_mart_timestamp()
+        if hourly_warn:
+            warnings.append(hourly_warn)
+        if hourly_ts:
+            from datetime import timedelta
+            hourly_coverage_end = hourly_ts + timedelta(hours=1)
+
     t_hourly_mart = time.perf_counter() - t0
-    if hourly_warn:
-        warnings.append(hourly_warn)
-    
+
     hourly_lag_min: Optional[float] = None
-    if hourly_ts:
-        from datetime import timedelta
-        hourly_coverage_end = hourly_ts + timedelta(hours=1)
+    if hourly_coverage_end:
         if hasattr(hourly_coverage_end, "tzinfo") and hourly_coverage_end.tzinfo is not None:
             hourly_lag_min = max(0.0, (now_utc - hourly_coverage_end).total_seconds() / 60.0)
         else:
@@ -415,13 +474,25 @@ def get_data_freshness_summary() -> Dict[str, Any]:
         hourly_status = "UNKNOWN"
     component_statuses.append(hourly_status)
 
-    # 3. Daily Summary Freshness
+    # 3. Daily Summary Freshness (from watermark: daily_summary)
     t0 = time.perf_counter()
-    daily_date, daily_warn = _safe_fetch_daily_summary_date()
+    daily_date: Optional[date] = None
+    daily_warn: Optional[str] = None
+
+    wm_daily = watermarks.get("daily_summary")
+    if wm_daily and wm_daily.get("last_successful_value"):
+        try:
+            daily_date = pendulum.parse(wm_daily["last_successful_value"]).date()
+        except Exception as e:
+            logger.debug(f"Failed to parse daily_summary watermark: {e}")
+
+    # Fallback to direct mart table lookup if watermark missing
+    if daily_date is None:
+        daily_date, daily_warn = _safe_fetch_daily_summary_date()
+        if daily_warn:
+            warnings.append(daily_warn)
+
     t_daily_summary = time.perf_counter() - t0
-    if daily_warn:
-        warnings.append(daily_warn)
-    
     daily_status = evaluate_daily_summary_freshness(daily_date, now_utc.date())
     component_statuses.append(daily_status)
 
@@ -433,16 +504,72 @@ def get_data_freshness_summary() -> Dict[str, Any]:
         warnings.append(health_warn)
     quality_status = health_status or "UNKNOWN"
 
-    # 5. Successful DAG Runs List
+    # 5. Successful DAG Runs List (from watermarks updated_at)
     t0 = time.perf_counter()
-    dag_runs, dag_warn = _safe_fetch_latest_successful_dag_runs(now_utc)
-    t_dag_runs = time.perf_counter() - t0
-    if dag_warn:
-        warnings.append(dag_warn)
+    known_dags = [
+        "gbfs_metadata_daily_dag",
+        "station_status_snapshot_dag",
+        "weather_calendar_sync_dag",
+        "hourly_mart_build_dag",
+        "daily_summary_dag",
+        "pipeline_health_dag",
+    ]
+    dag_watermark_map = {
+        "gbfs_metadata_daily_dag": "gbfs_metadata",
+        "station_status_snapshot_dag": "gbfs_station_status",
+        "weather_calendar_sync_dag": "weather_hourly",
+        "hourly_mart_build_dag": "hourly_mart",
+        "daily_summary_dag": "daily_summary",
+        "pipeline_health_dag": "pipeline_health",
+    }
 
+    dag_runs: List[Dict[str, Any]] = []
+    dag_warn: Optional[str] = None
+
+    has_wm_dag_data = any(dag_watermark_map.get(d) in watermarks for d in known_dags)
+    if has_wm_dag_data:
+        for dag_id in known_dags:
+            wm_source = dag_watermark_map.get(dag_id)
+            wm_row = watermarks.get(wm_source) if wm_source else None
+            success_ts = None
+            if wm_row:
+                success_ts = _ensure_utc(wm_row.get("updated_at"))
+                if not success_ts and wm_row.get("last_successful_value"):
+                    try:
+                        success_ts = _ensure_utc(pendulum.parse(wm_row["last_successful_value"]))
+                    except Exception:
+                        pass
+
+            if success_ts:
+                if hasattr(success_ts, "tzinfo") and success_ts.tzinfo is not None:
+                    lag_min = max(0.0, (now_utc - success_ts).total_seconds() / 60.0)
+                else:
+                    lag_min = max(0.0, (now_utc.replace(tzinfo=None) - success_ts).total_seconds() / 60.0)
+                status = evaluate_dag_run_freshness(dag_id, lag_min)
+                dag_runs.append({
+                    "dag_id": dag_id,
+                    "latest_success_at": success_ts,
+                    "lag_minutes": round(lag_min, 1),
+                    "status": status,
+                })
+            else:
+                dag_runs.append({
+                    "dag_id": dag_id,
+                    "latest_success_at": None,
+                    "lag_minutes": None,
+                    "status": "UNKNOWN",
+                })
+    else:
+        # Fallback to pipeline_runs table scan
+        dag_runs, dag_warn = _safe_fetch_latest_successful_dag_runs(now_utc)
+        if dag_warn:
+            warnings.append(dag_warn)
+
+    t_dag_runs = time.perf_counter() - t0
     t_total = time.perf_counter() - t_start
 
     print(
+        f"[TIMING] freshness.watermarks = {t_watermarks:.6f}s\n"
         f"[TIMING] freshness.station_status = {t_station_status:.6f}s\n"
         f"[TIMING] freshness.hourly_mart = {t_hourly_mart:.6f}s\n"
         f"[TIMING] freshness.daily_summary = {t_daily_summary:.6f}s\n"
