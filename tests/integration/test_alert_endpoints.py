@@ -71,7 +71,7 @@ def test_get_active_alerts():
     data = response.json().get("data", [])
     assert isinstance(data, list)
     for alert in data:
-        assert alert["status"] in ("OPEN", "FAILED_TO_SEND", "DISABLED", "RESOLVED")
+        assert alert["status"] in ("OPEN", "FAILED_TO_SEND", "DISABLED", "RESOLVED", "SENT")
 
 
 def test_get_alert_history_filtering():

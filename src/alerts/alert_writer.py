@@ -159,7 +159,7 @@ def resolve_open_alerts(
     alert_type: Optional[str] = None,
 ) -> int:
     """
-    Mark matching OPEN / FAILED_TO_SEND alert events as RESOLVED with resolved_at timestamp.
+    Mark matching active/unresolved alert events as RESOLVED with resolved_at timestamp.
     Returns the count of resolved alert events.
     """
     try:
@@ -167,7 +167,8 @@ def resolve_open_alerts(
             UPDATE etl_metadata.alert_events
             SET status = 'RESOLVED',
                 resolved_at = CURRENT_TIMESTAMP
-            WHERE status IN ('OPEN', 'FAILED_TO_SEND')
+            WHERE status != 'RESOLVED'
+              AND status != 'SKIPPED'
               AND (CAST(:dag_id AS text) IS NULL OR dag_id = :dag_id)
               AND (CAST(:task_id AS text) IS NULL OR task_id = :task_id)
               AND (CAST(:alert_type AS text) IS NULL OR alert_type = :alert_type)

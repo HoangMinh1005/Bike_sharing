@@ -314,6 +314,8 @@ def pipeline_health_dag():
                 h_dag_id = h_row["monitored_dag_id"]
                 resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.PIPELINE_DAG_STALE)
                 resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.PIPELINE_DAG_FAILED)
+                resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.AIRFLOW_TASK_FAILURE)
+                resolve_open_alerts(dag_id=h_dag_id, alert_type=AlertType.DATA_FRESHNESS_STALE)
 
         except Exception as e:
             logger.warning(f"Error checking and emitting pipeline health alerts (non-blocking): {e}")

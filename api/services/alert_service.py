@@ -46,24 +46,24 @@ def get_latest_alerts(limit: int = 20) -> List[dict]:
 
 def get_active_alerts(limit: int = 50) -> List[dict]:
     """
-    Retrieve currently active alert events (OPEN or FAILED_TO_SEND)
+    Retrieve all unresolved alert events (status != 'RESOLVED' and status != 'SKIPPED')
     along with recently RESOLVED alerts from the last 24 hours.
-    Unresolved alerts persist indefinitely; resolved alerts disappear after 24h.
+    Unresolved alerts persist indefinitely until resolved; resolved alerts disappear after 24h.
     """
     try:
         query = """
             SELECT *
             FROM etl_metadata.alert_events
-            WHERE status IN ('OPEN', 'FAILED_TO_SEND')
+            WHERE (status != 'RESOLVED' AND status != 'SKIPPED')
                OR (
                    status = 'RESOLVED'
                    AND (
                        resolved_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-                       OR created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                       OR (resolved_at IS NULL AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours')
                    )
                )
             ORDER BY
-                CASE WHEN status IN ('OPEN', 'FAILED_TO_SEND') THEN 0 ELSE 1 END ASC,
+                CASE WHEN status != 'RESOLVED' THEN 0 ELSE 1 END ASC,
                 created_at DESC
             LIMIT :limit
         """
@@ -132,7 +132,7 @@ def get_alert_history(
 
 def get_alert_stats() -> dict:
     """
-    Calculate summary count statistics for active alerts grouped by severity,
+    Calculate summary count statistics for active (unresolved) alerts grouped by severity,
     plus the count of resolved alerts in the last 24 hours.
     """
     default_stats = {
@@ -146,16 +146,16 @@ def get_alert_stats() -> dict:
     try:
         query = """
             SELECT
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND')) AS total_active,
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'CRITICAL') AS critical_count,
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'ERROR') AS error_count,
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'WARNING') AS warning_count,
-                COUNT(*) FILTER (WHERE status IN ('OPEN', 'FAILED_TO_SEND') AND severity = 'INFO') AS info_count,
+                COUNT(*) FILTER (WHERE status != 'RESOLVED' AND status != 'SKIPPED') AS total_active,
+                COUNT(*) FILTER (WHERE status != 'RESOLVED' AND status != 'SKIPPED' AND severity = 'CRITICAL') AS critical_count,
+                COUNT(*) FILTER (WHERE status != 'RESOLVED' AND status != 'SKIPPED' AND severity = 'ERROR') AS error_count,
+                COUNT(*) FILTER (WHERE status != 'RESOLVED' AND status != 'SKIPPED' AND severity = 'WARNING') AS warning_count,
+                COUNT(*) FILTER (WHERE status != 'RESOLVED' AND status != 'SKIPPED' AND severity = 'INFO') AS info_count,
                 COUNT(*) FILTER (
                     WHERE status = 'RESOLVED'
                     AND (
                         resolved_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-                        OR created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                        OR (resolved_at IS NULL AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours')
                     )
                 ) AS resolved_count
             FROM etl_metadata.alert_events
