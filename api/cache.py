@@ -31,8 +31,8 @@ def get_redis_client() -> Optional[redis.Redis]:
         client = redis.Redis.from_url(
             REDIS_URL,
             decode_responses=True,
-            socket_timeout=0.5,
-            socket_connect_timeout=0.5,
+            socket_timeout=0.05,
+            socket_connect_timeout=0.05,
         )
 
         # Validate connection early.

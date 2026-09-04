@@ -199,16 +199,7 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     """
     global _FRESHNESS_CACHE, _FRESHNESS_CACHE_TIME
 
-    # Tier 1: Try Redis shared cache across all Uvicorn workers
-    try:
-        from api.cache import get_cache
-        cached = get_cache("bike_api:freshness_summary")
-        if cached:
-            return cached
-    except Exception as e:
-        logger.debug(f"Redis cache check failed: {e}")
-
-    # Tier 2: In-memory fallback per-process
+    # In-memory per-process TTL cache (TTL=15s, instant 0.001ms RAM lookup)
     now_mono = time.monotonic()
     if _FRESHNESS_CACHE is not None and (now_mono - _FRESHNESS_CACHE_TIME) < _CACHE_TTL_SECONDS:
         return _FRESHNESS_CACHE
@@ -351,9 +342,4 @@ def get_data_freshness_summary() -> Dict[str, Any]:
     }
     _FRESHNESS_CACHE = res
     _FRESHNESS_CACHE_TIME = now_mono
-    try:
-        from api.cache import set_cache
-        set_cache("bike_api:freshness_summary", res, ttl_seconds=15)
-    except Exception as e:
-        logger.debug(f"Failed to set Redis cache: {e}")
     return res
