@@ -34,19 +34,19 @@ RETENTION_POLICIES: List[Dict[str, Any]] = [
     {
         "table_name": "raw.gbfs_feed_snapshots",
         "timestamp_column": "fetched_at",
-        "retention_days": 30,
+        "retention_days": 7,
         "enabled": True,
     },
     {
         "table_name": "raw.station_status_snapshots",
         "timestamp_column": "fetched_at",
-        "retention_days": 45,
+        "retention_days": 14,
         "enabled": True,
     },
     {
         "table_name": "raw.weather_hourly",
         "timestamp_column": "fetched_at",
-        "retention_days": 45,
+        "retention_days": 14,
         "enabled": True,
     },
     {
@@ -58,19 +58,19 @@ RETENTION_POLICIES: List[Dict[str, Any]] = [
     {
         "table_name": "staging.station_vehicle_type_status",
         "timestamp_column": "fetched_at",
-        "retention_days": 45,
+        "retention_days": 14,
         "enabled": True,
     },
     {
         "table_name": "staging.station_status",
         "timestamp_column": "fetched_at",
-        "retention_days": 45,
+        "retention_days": 14,
         "enabled": True,
     },
     {
         "table_name": "staging.weather_hourly",
         "timestamp_column": "fetched_at",
-        "retention_days": 90,
+        "retention_days": 30,
         "enabled": True,
     },
     {
@@ -82,25 +82,25 @@ RETENTION_POLICIES: List[Dict[str, Any]] = [
     {
         "table_name": "etl_metadata.dq_results",
         "timestamp_column": "checked_at",
-        "retention_days": 90,
+        "retention_days": 30,
         "enabled": True,
     },
     {
         "table_name": "etl_metadata.rejected_records",
         "timestamp_column": "created_at",
-        "retention_days": 90,
+        "retention_days": 30,
         "enabled": True,
     },
     {
         "table_name": "etl_metadata.pipeline_health_summary",
         "timestamp_column": "checked_at",
-        "retention_days": 90,
+        "retention_days": 30,
         "enabled": True,
     },
     {
         "table_name": "etl_metadata.pipeline_runs",
         "timestamp_column": "started_at",
-        "retention_days": 180,
+        "retention_days": 90,
         "enabled": True,
     },
     # Mart retention is disabled by default.

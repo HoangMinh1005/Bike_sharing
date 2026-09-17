@@ -33,7 +33,7 @@ def test_valid_retention_target():
     """
     Test _is_allowed_retention_target returns True for exact whitelisted targets.
     """
-    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "fetched_at", 30) is True
+    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "fetched_at", 7) is True
     assert _is_allowed_retention_target("raw.calendar", "loaded_at", 400) is True
 
 
@@ -42,9 +42,9 @@ def test_invalid_retention_target():
     Test _is_allowed_retention_target returns False for non-whitelisted target/columns.
     """
     # Non-existent table
-    assert _is_allowed_retention_target("public.users", "created_at", 30) is False
+    assert _is_allowed_retention_target("public.users", "created_at", 7) is False
     # Non-existent column on valid table
-    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "id", 30) is False
+    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "id", 7) is False
     # Wrong retention_days for valid table
     assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "fetched_at", 999) is False
 

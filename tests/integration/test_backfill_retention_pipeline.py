@@ -74,14 +74,14 @@ def test_generate_daily_dates():
 
 def test_retention_whitelist_protection():
     # Valid allowed entry
-    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "fetched_at", 30) is True
+    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "fetched_at", 7) is True
 
     # Reject unallowed table/column combination
-    assert _is_allowed_retention_target("public.users", "created_at", 30) is False
-    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "id", 30) is False
+    assert _is_allowed_retention_target("public.users", "created_at", 7) is False
+    assert _is_allowed_retention_target("raw.gbfs_feed_snapshots", "id", 7) is False
 
     with pytest.raises(ValueError, match="Unauthorized retention cleanup target"):
-        cleanup_table_by_retention("public.arbitrary_table", "id", 30, dry_run=True)
+        cleanup_table_by_retention("public.arbitrary_table", "id", 7, dry_run=True)
 
 
 def test_run_retention_cleanup_dry_run():
