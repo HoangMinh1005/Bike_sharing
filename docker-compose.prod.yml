@@ -9,6 +9,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__LOGGING_LEVEL: "INFO"
+    AIRFLOW__CORE__PARALLELISM: "3"
+    AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "3"
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
     PYTHONPATH: "/opt/airflow"
 
